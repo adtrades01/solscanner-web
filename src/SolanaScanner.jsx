@@ -118,7 +118,16 @@ const DEFAULT_BLUECHIPS = [
 
 // --- UTILITY FUNCTIONS ---
 
-const copyToClipboard = (text) => {
+const copyToClipboard = async (text) => {
+  if (!text) return;
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (err) {
+      console.error('Clipboard API failed, falling back', err);
+    }
+  }
   const textArea = document.createElement('textarea');
   textArea.value = text;
   textArea.style.position = 'fixed';
@@ -263,7 +272,7 @@ const AlertToast = ({ token, onClose, onClick }) => {
       onClick={() => onClick(token)}
       className="fixed bottom-20 right-4 md:right-6 z-50 animate-in slide-in-from-right duration-300 cursor-pointer group"
     >
-      <div className="bg-gray-900/90 border border-green-500/50 p-4 rounded-xl shadow-2xl shadow-green-500/10 backdrop-blur-md max-w-sm flex items-start gap-4 transition-transform group-hover:scale-105">
+      <div className="bg-slate-950/90 border border-emerald-500/40 p-4 rounded-2xl shadow-2xl shadow-emerald-500/10 backdrop-blur-md max-w-sm flex items-start gap-4 transition-transform group-hover:scale-[1.02]">
         <div className="p-2 bg-green-500/20 rounded-full text-green-400 shrink-0">
           <Bell className="w-5 h-5" />
         </div>
@@ -319,7 +328,7 @@ const MajorCryptoCard = ({ symbol, price, name, theme = 'dark', onClick }) => {
 
   return (
     <div
-      className="relative w-full bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden group cursor-pointer mb-1 hover:border-gray-600 transition-colors h-14 flex items-center"
+      className="relative w-full bg-slate-900/60 border border-slate-800/60 rounded-xl overflow-hidden group cursor-pointer mb-1 hover:border-slate-600/70 transition-colors h-14 flex items-center backdrop-blur"
       onClick={() => onClick(`BINANCE:${symbol}`)}
     >
       <div className="absolute inset-0 z-10 bg-transparent" />
@@ -395,12 +404,12 @@ const TopTicker = ({ items, onItemClick }) => {
   if (!items.length) return null;
   const loopedItems = [...items, ...items, ...items];
   return (
-    <div className="fixed top-0 left-0 right-0 h-8 bg-black/90 border-b border-green-900/30 z-50 flex items-center overflow-hidden">
+    <div className="fixed top-0 left-0 right-0 h-8 bg-slate-950/90 border-b border-emerald-500/10 z-50 flex items-center overflow-hidden">
       <div className="flex animate-ticker whitespace-nowrap hover:pause">
         {loopedItems.map((item, i) => (
           <div
             key={`${item.pairAddress}-${i}`}
-            className="flex-shrink-0 flex items-center px-6 text-xs font-mono border-r border-white/5 cursor-pointer hover:bg-white/5 transition-colors whitespace-nowrap"
+            className="flex-shrink-0 flex items-center px-6 text-xs font-mono border-r border-white/5 cursor-pointer hover:bg-white/10 transition-colors whitespace-nowrap"
             onClick={() => onItemClick(item)}
           >
             <span className="font-bold text-green-400 mr-2">
@@ -473,11 +482,15 @@ const TokenCard = memo(
     const sinceEntryPct = safeEntryPrice > 0 ? ((currentPrice - safeEntryPrice) / safeEntryPrice) * 100 : 0;
     const downFromAth = safeAth > 0 ? ((currentPrice - safeAth) / safeAth) * 100 : 0;
 
-    const athValue = safeAth > 0 ? safeAth * (parseFloat(pair.fdv) / currentPrice) : 0;
+    const fdvValue = parseFloat(pair.fdv) || 0;
+    const athValue =
+      safeAth > 0 && currentPrice > 0 && fdvValue > 0
+        ? safeAth * (fdvValue / currentPrice)
+        : 0;
 
     return (
       <div
-        className={`bg-[#0a0a0a] border ${borderColor} rounded-xl p-4 hover:bg-gray-900 transition-all group relative overflow-hidden flex flex-col justify-between h-full`}
+      className={`bg-slate-900/60 border ${borderColor} rounded-2xl p-4 hover:bg-slate-900/80 transition-all group relative overflow-hidden flex flex-col justify-between h-full shadow-lg shadow-black/40`}
       >
         <div className="absolute inset-0 z-0 cursor-pointer" onClick={() => onClick(pair)} />
 
@@ -1315,9 +1328,9 @@ export default function SolScanner() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => fetchData(false), 1000); // 1s Auto Refresh
+    const interval = setInterval(() => fetchData(false), 30000); // 30s Auto Refresh
     return () => clearInterval(interval);
-  }, [customBluechips, savedEntryStats, blacklist]);
+  }, [customBluechips, blacklist, user]);
 
   const handleCASearch = async () => {
     if (!caInput.trim()) return;
@@ -1528,7 +1541,7 @@ export default function SolScanner() {
     return (
       <div className="p-6 pb-24 md:pb-6">
         <div className="mb-6">
-          <div className="flex items-end justify-between border-b border-gray-800 pb-4">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-800/60 pb-4">
             <div className="flex items-end gap-4">
               <h2 className="text-3xl font-bold text-white flex items-center gap-3">
                 {title}
@@ -1545,7 +1558,7 @@ export default function SolScanner() {
             </div>
             <button
               onClick={() => fetchData(true)}
-              className="bg-green-900/20 hover:bg-green-900/40 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-all"
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-all shadow-lg shadow-emerald-500/10"
             >
               <RefreshCw
                 className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
@@ -1555,14 +1568,14 @@ export default function SolScanner() {
           </div>
 
           {activeTab === 'bluechips' && (
-            <div className="mt-4 bg-purple-900/10 border border-purple-500/20 rounded-xl p-4 flex items-center gap-4">
-              <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+            <div className="mt-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 flex items-center gap-4">
+              <div className="p-2 bg-purple-500/20 rounded-lg text-purple-300">
                 <PlusCircle className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <input
                   type="text"
-                  className="w-full bg-transparent border-b border-purple-500/30 text-white text-sm py-1 focus:outline-none focus:border-purple-500 placeholder-purple-300/30 font-mono"
+                  className="w-full bg-transparent border-b border-purple-500/40 text-white text-sm py-1 focus:outline-none focus:border-purple-400 placeholder-purple-200/40 font-mono"
                   placeholder="Paste Contract Address (CA) to add custom bluechip..."
                   value={bluechipInput}
                   onChange={(e) => setBluechipInput(e.target.value)}
@@ -1572,7 +1585,7 @@ export default function SolScanner() {
               <button
                 onClick={handleAddBluechip}
                 disabled={isAddingBluechip}
-                className="text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition-colors"
+                className="text-xs font-bold bg-purple-500 hover:bg-purple-400 text-black px-4 py-2 rounded-lg transition-colors shadow-lg shadow-purple-500/20"
               >
                 {isAddingBluechip ? 'Adding...' : 'ADD COIN'}
               </button>
@@ -1581,7 +1594,7 @@ export default function SolScanner() {
         </div>
 
         {tokensToShow.length === 0 ? (
-          <div className="text-center py-20 text-gray-700 border border-gray-900 border-dashed rounded-xl">
+          <div className="text-center py-20 text-gray-500 border border-slate-800/70 border-dashed rounded-2xl bg-slate-900/40">
             {activeTab === 'ai_picks'
               ? 'Market is quiet. No high-conviction setups found.'
               : 'No signals detected.'}
@@ -1616,17 +1629,17 @@ export default function SolScanner() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-200 font-sans selection:bg-green-500/30 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#050507] text-slate-100 font-sans antialiased selection:bg-emerald-400/30 flex flex-col overflow-hidden">
       <TopTicker items={scannerData} onItemClick={setSelectedPair} />
       <div className="flex flex-1 pt-8 overflow-hidden">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#050505] border-r border-gray-900 transform transition-transform duration-300 pt-12 ${
+          className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-950/90 border-r border-slate-800/70 backdrop-blur-xl transform transition-transform duration-300 pt-12 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
           <div className="p-4 space-y-8 flex-1 overflow-y-auto">
             <div className="flex items-center gap-2 px-2">
-              <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center text-black font-bold">
+              <div className="w-8 h-8 bg-emerald-400 rounded-lg flex items-center justify-center text-black font-bold shadow-lg shadow-emerald-400/30">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
               <span className="font-bold text-xl text-white tracking-tight">
@@ -1641,7 +1654,7 @@ export default function SolScanner() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="w-full bg-gray-900 border border-gray-800 rounded text-xs px-2 py-2 focus:border-green-500 focus:outline-none"
+                  className="w-full bg-slate-900/70 border border-slate-800 rounded-lg text-xs px-2 py-2 focus:border-emerald-400/80 focus:outline-none"
                   placeholder="Paste Address..."
                   value={caInput}
                   onChange={(e) => setCaInput(e.target.value)}
@@ -1649,7 +1662,7 @@ export default function SolScanner() {
                 />
                 <button
                   onClick={handleCASearch}
-                  className="bg-gray-800 hover:bg-green-600 hover:text-white rounded p-2 text-gray-400 transition-colors"
+                  className="bg-slate-900 hover:bg-emerald-500 hover:text-black rounded-lg p-2 text-gray-400 transition-colors shadow-inner shadow-black/40"
                 >
                   <SearchCode className="w-4 h-4" />
                 </button>
@@ -1662,10 +1675,10 @@ export default function SolScanner() {
                   setActiveTab('ai_picks');
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'ai_picks'
-                    ? 'bg-green-900/20 text-green-400 border-l-2 border-green-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-400'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <Activity className="w-4 h-4" /> AI Picks
@@ -1675,10 +1688,10 @@ export default function SolScanner() {
                   setActiveTab('trending');
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'trending'
-                    ? 'bg-orange-900/20 text-orange-400 border-l-2 border-orange-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'bg-orange-500/10 text-orange-300 border-l-2 border-orange-400'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <Flame className="w-4 h-4" /> Trending
@@ -1688,10 +1701,10 @@ export default function SolScanner() {
                   setActiveTab('bluechips');
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'bluechips'
-                    ? 'bg-purple-900/20 text-purple-400 border-l-2 border-purple-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'bg-purple-500/10 text-purple-300 border-l-2 border-purple-400'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" /> Bluechips
@@ -1701,10 +1714,10 @@ export default function SolScanner() {
                   setActiveTab('liked');
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'liked'
-                    ? 'bg-pink-900/20 text-pink-400 border-l-2 border-pink-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'bg-pink-500/10 text-pink-300 border-l-2 border-pink-400'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <Heart className="w-4 h-4" /> Watchlist
@@ -1719,14 +1732,14 @@ export default function SolScanner() {
                   <input
                     type="text"
                     placeholder="New Folder..."
-                    className="bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-white w-full focus:border-green-500 focus:outline-none placeholder-gray-700"
+                    className="bg-slate-900/70 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white w-full focus:border-emerald-400/80 focus:outline-none placeholder-gray-600"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                   />
                   <button
                     onClick={handleCreateFolder}
-                    className="p-1 bg-gray-900 border border-gray-800 rounded hover:border-green-500 text-green-500"
+                    className="p-1 bg-slate-900 border border-slate-800 rounded-lg hover:border-emerald-400 text-emerald-400"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -1739,10 +1752,10 @@ export default function SolScanner() {
                         setActiveTab(`folder:${folder.id}`);
                         setSidebarOpen(false);
                       }}
-                      className={`group flex items-center justify-between px-3 py-2 rounded cursor-pointer text-sm transition-colors ${
+                      className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
                         activeTab === `folder:${folder.id}`
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-500 hover:text-white'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-gray-400 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -1768,23 +1781,26 @@ export default function SolScanner() {
                   <Trophy className="w-3 h-3" /> Top Calls (24h)
                 </div>
                 <div className="space-y-1 px-1">
-                  {topCalls.day.map((t) => (
+                  {topCalls.day.map((t) => {
+                    const entry = Number(t.entryPrice);
+                    const current = Number(t.currentPrice);
+                    const gain =
+                      entry > 0 && current > 0 ? ((current - entry) / entry) * 100 : 0;
+                    return (
                     <div
                       key={t.pairAddress}
                       onClick={() => setSelectedPair(t)}
-                      className="cursor-pointer px-3 py-2 rounded hover:bg-yellow-900/10 border border-transparent hover:border-yellow-900/30 transition-colors flex justify-between items-center"
+                      className="cursor-pointer px-3 py-2 rounded-lg hover:bg-yellow-500/10 border border-transparent hover:border-yellow-500/30 transition-colors flex justify-between items-center"
                     >
-                      <span className="text-xs font-bold text-gray-300">
-                        {t.baseToken?.symbol || 'UNKNOWN'}
-                      </span>
-                      <span className="text-[10px] font-mono text-green-400">
-                        +{(
-                          ((t.currentPrice - t.entryPrice) / t.entryPrice) *
-                          100
-                        ).toFixed(0)}%
-                      </span>
-                    </div>
-                  ))}
+                        <span className="text-xs font-bold text-gray-300">
+                          {t.baseToken?.symbol || 'UNKNOWN'}
+                        </span>
+                        <span className="text-[10px] font-mono text-green-400">
+                          +{gain.toFixed(0)}%
+                        </span>
+                      </div>
+                    );
+                  })}
                   {topCalls.day.length === 0 && (
                     <div className="px-3 text-[10px] text-gray-600 italic">
                       No data yet...
@@ -1804,7 +1820,7 @@ export default function SolScanner() {
                       <div
                         key={t.pairAddress}
                         onClick={() => setSelectedPair(t)}
-                        className="cursor-pointer px-3 py-2 rounded hover:bg-red-900/10 border border-transparent hover:border-red-900/30 transition-colors flex justify-between items-center"
+                        className="cursor-pointer px-3 py-2 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors flex justify-between items-center"
                       >
                         <span className="text-xs font-bold text-gray-300">
                           {t.baseToken.symbol}
@@ -1821,7 +1837,7 @@ export default function SolScanner() {
           </div>
 
           {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
-          <div className="hidden md:block pt-4 border-t border-gray-900 space-y-2 bg-[#020202]">
+          <div className="hidden md:block pt-4 border-t border-slate-800/70 space-y-2 bg-slate-950/70">
             <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-4 pt-2">
               Market Pulse
             </div>
@@ -1850,16 +1866,17 @@ export default function SolScanner() {
         </aside>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed bottom-36 right-6 z-40 p-3 bg-green-500 text-black rounded-full shadow-lg md:hidden"
+          className="fixed bottom-36 right-6 z-40 p-3 bg-emerald-400 text-black rounded-full shadow-lg shadow-emerald-400/30 md:hidden"
         >
           <Menu className="w-6 h-6" />
         </button>
         <main className="flex-1 relative flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_transparent_55%)] pointer-events-none"></div>
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none fixed"></div>
           <div className="flex-1 overflow-y-auto pb-32 md:pb-0">{renderContent()}</div>
         </main>
         {/* MOBILE MARKET PULSE (Bottom Fixed - Text Only) */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-800 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
           <MajorCryptoCard
             symbol="BTCUSDT"
             price={majorPrices?.bitcoin?.usd}
