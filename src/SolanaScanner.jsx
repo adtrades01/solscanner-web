@@ -566,16 +566,24 @@ const TokenCard = memo(
                 {formatCurrency(pair.fdv || pair.marketCap)}
               </div>
 
-              {safeEntryPrice > 0 ? (
+            {safeEntryPrice > 0 ? (
                 <div className="flex flex-col items-end">
-                  <div
-                    className={`text-[10px] font-mono font-bold flex items-center gap-1 ${
-                      sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}
-                  >
-                    <Rocket className="w-3 h-3" />
-                    {sinceEntryPct > 0 ? '+' : ''}
-                    {sinceEntryPct.toFixed(2)}%
+                  <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
+                    Call MCap:{' '}
+                    <span className="text-white">
+                      {formatCurrency(
+                        (parseFloat(pair.fdv || pair.marketCap) || 0) *
+                          (safeEntryPrice / (currentPrice || 1))
+                      )}
+                    </span>
+                    <span
+                      className={`ml-2 font-bold ${
+                        sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}
+                    >
+                      {sinceEntryPct > 0 ? '+' : ''}
+                      {sinceEntryPct.toFixed(2)}%
+                    </span>
                   </div>
                   <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
                     ATH: {formatCurrency(athValue)}{' '}
@@ -1060,6 +1068,7 @@ export default function SolScanner() {
   const [blacklist, setBlacklist] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
+  const [cryptoOpen, setCryptoOpen] = useState(true);
 
   const alertHistoryRef = useRef({});
 
@@ -1764,35 +1773,46 @@ export default function SolScanner() {
               </button>
 
               <div className="pt-4 border-t border-white/10 mt-4">
-                <div className="flex items-center justify-between px-3 mb-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
+                <button
+                  onClick={() => setCryptoOpen((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] glass-chip"
+                >
                   <span>Crypto</span>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    Live
+                  <span
+                    className={`text-slate-400 text-[11px] transition-transform ${
+                      cryptoOpen ? 'rotate-90' : ''
+                    }`}
+                  >
+                    <ArrowRight className="w-3 h-3" />
                   </span>
-                </div>
-                <div className="px-1 space-y-2">
-                  <MajorCryptoCard
-                    symbol="BTCUSDT"
-                    price={majorPrices?.bitcoin?.usd}
-                    name="Bitcoin"
-                    onClick={setExpandedChartSymbol}
-                  />
-                  <MajorCryptoCard
-                    symbol="ETHUSDT"
-                    price={majorPrices?.ethereum?.usd}
-                    name="Ethereum"
-                    onClick={setExpandedChartSymbol}
-                  />
-                  <MajorCryptoCard
-                    symbol="SOLUSDT"
-                    price={majorPrices?.solana?.usd}
-                    name="Solana"
-                    onClick={setExpandedChartSymbol}
-                  />
-                </div>
-                <div className="px-3 pt-2 text-[10px] text-slate-500 font-mono text-center">
-                  Feed • {lastRefreshed.toLocaleTimeString()}
-                </div>
+                </button>
+                {cryptoOpen && (
+                  <>
+                    <div className="px-1 space-y-2 mt-3">
+                      <MajorCryptoCard
+                        symbol="BTCUSDT"
+                        price={majorPrices?.bitcoin?.usd}
+                        name="Bitcoin"
+                        onClick={setExpandedChartSymbol}
+                      />
+                      <MajorCryptoCard
+                        symbol="ETHUSDT"
+                        price={majorPrices?.ethereum?.usd}
+                        name="Ethereum"
+                        onClick={setExpandedChartSymbol}
+                      />
+                      <MajorCryptoCard
+                        symbol="SOLUSDT"
+                        price={majorPrices?.solana?.usd}
+                        name="Solana"
+                        onClick={setExpandedChartSymbol}
+                      />
+                    </div>
+                    <div className="px-3 pt-2 text-[10px] text-slate-500 font-mono text-center">
+                      Feed • {lastRefreshed.toLocaleTimeString()}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* FOLDERS */}
