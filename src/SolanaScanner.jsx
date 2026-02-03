@@ -1082,7 +1082,7 @@ export default function SolScanner() {
   const [blacklist, setBlacklist] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
-  const [cryptoOpen, setCryptoOpen] = useState(true);
+  const [cryptoOpen, setCryptoOpen] = useState(false);
 
   const alertHistoryRef = useRef({});
 
@@ -1695,7 +1695,7 @@ export default function SolScanner() {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
-          <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll">
+          <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll overscroll-contain">
             <div className="flex items-center gap-3 px-2 -mt-4">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
