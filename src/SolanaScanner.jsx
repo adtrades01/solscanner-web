@@ -1050,7 +1050,6 @@ export default function SolScanner() {
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
   const [cryptoOpen, setCryptoOpen] = useState(false);
-  const [volumeOpen, setVolumeOpen] = useState(false);
 
   const alertHistoryRef = useRef({});
   const previousVolumeCountRef = useRef(0);
@@ -1575,6 +1574,9 @@ export default function SolScanner() {
     } else if (activeTab === 'liked') {
       tokensToShow = likedCoins;
       title = 'Watchlist';
+    } else if (activeTab === 'volume_alerts') {
+      tokensToShow = volumeSpikes;
+      title = 'Volume Alerts';
     } else if (activeTab.startsWith('folder:')) {
       const folderId = activeTab.split(':')[1];
       tokensToShow = folderItems.filter((item) => item.folderId === folderId);
@@ -1924,41 +1926,22 @@ export default function SolScanner() {
               {volumeSpikes.length > 0 && (
                 <div className="pt-4 border-t border-white/10 mt-4">
                   <button
-                    onClick={() => setVolumeOpen((prev) => !prev)}
+                    onClick={() => {
+                      setActiveTab('volume_alerts');
+                      setSidebarOpen(false);
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
-                      volumeOpen
+                      activeTab === 'volume_alerts'
                         ? 'glass-chip text-red-300 border border-red-400/30'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     <Siren className="w-4 h-4" />
                     <span className="text-sm">Volume Alerts</span>
-                    <span
-                      className={`ml-auto text-slate-400 text-[11px] transition-transform ${
-                        volumeOpen ? 'rotate-90' : ''
-                      }`}
-                    >
-                      <ArrowRight className="w-3 h-3" />
+                    <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                      {volumeSpikes.length}
                     </span>
                   </button>
-                  {volumeOpen && (
-                    <div className="space-y-1 px-1 mt-3">
-                      {volumeSpikes.map((t) => (
-                        <div
-                          key={t.pairAddress}
-                          onClick={() => setSelectedPair(t)}
-                          className="cursor-pointer px-3 py-2 rounded-xl glass-chip hover:border-red-400/30 transition-colors flex justify-between items-center"
-                        >
-                          <span className="text-xs font-bold text-gray-300">
-                            {t.baseToken.symbol}
-                          </span>
-                          <span className="text-[10px] font-mono text-red-400">
-                            +{((t.volume.m5 / t.volume.h1) * 100).toFixed(0)}% Vol
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
             </nav>
