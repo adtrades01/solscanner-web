@@ -328,13 +328,18 @@ const MajorCryptoCard = ({ symbol, price, name, theme = 'dark', onClick }) => {
         <div className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.2em]">
           {name}
         </div>
-        <div className="text-sm font-mono font-semibold text-white tracking-tight">
-          {typeof price === 'number'
-            ? `$${price.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}`
-            : '...'}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-emerald-300 uppercase tracking-[0.2em]">
+            Live
+          </span>
+          <div className="text-sm font-mono font-semibold text-white tracking-tight">
+            {typeof price === 'number'
+              ? `$${price.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}`
+              : '...'}
+          </div>
         </div>
       </div>
 
@@ -1593,37 +1598,6 @@ export default function SolScanner() {
             </button>
           </div>
 
-          <div className="glass-panel rounded-2xl px-6 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white uppercase tracking-[0.3em]">
-                Crypto
-              </h3>
-              <div className="text-[10px] text-slate-500 font-mono">
-                Feed • {lastRefreshed.toLocaleTimeString()}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <MajorCryptoCard
-                symbol="BTCUSDT"
-                price={majorPrices?.bitcoin?.usd}
-                name="Bitcoin"
-                onClick={setExpandedChartSymbol}
-              />
-              <MajorCryptoCard
-                symbol="ETHUSDT"
-                price={majorPrices?.ethereum?.usd}
-                name="Ethereum"
-                onClick={setExpandedChartSymbol}
-              />
-              <MajorCryptoCard
-                symbol="SOLUSDT"
-                price={majorPrices?.solana?.usd}
-                name="Solana"
-                onClick={setExpandedChartSymbol}
-              />
-            </div>
-          </div>
-
           {activeTab === 'bluechips' && (
             <div className="mt-4 glass-panel border border-violet-400/20 rounded-2xl p-4 flex items-center gap-4">
               <div className="p-2 bg-violet-500/20 rounded-lg text-violet-300">
@@ -1788,6 +1762,38 @@ export default function SolScanner() {
               >
                 <Heart className="w-4 h-4" /> Watchlist
               </button>
+
+              <div className="pt-4 border-t border-white/10 mt-4">
+                <div className="flex items-center justify-between px-3 mb-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
+                  <span>Crypto</span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    Live
+                  </span>
+                </div>
+                <div className="px-1 space-y-2">
+                  <MajorCryptoCard
+                    symbol="BTCUSDT"
+                    price={majorPrices?.bitcoin?.usd}
+                    name="Bitcoin"
+                    onClick={setExpandedChartSymbol}
+                  />
+                  <MajorCryptoCard
+                    symbol="ETHUSDT"
+                    price={majorPrices?.ethereum?.usd}
+                    name="Ethereum"
+                    onClick={setExpandedChartSymbol}
+                  />
+                  <MajorCryptoCard
+                    symbol="SOLUSDT"
+                    price={majorPrices?.solana?.usd}
+                    name="Solana"
+                    onClick={setExpandedChartSymbol}
+                  />
+                </div>
+                <div className="px-3 pt-2 text-[10px] text-slate-500 font-mono text-center">
+                  Feed • {lastRefreshed.toLocaleTimeString()}
+                </div>
+              </div>
 
               {/* FOLDERS */}
               <div className="pt-4">
