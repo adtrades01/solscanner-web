@@ -1551,7 +1551,7 @@ export default function SolScanner() {
             </div>
             <button
               onClick={() => fetchData(true)}
-              className="glass-chip hover:bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all"
+              className="glass-chip hover:bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all pointer-events-auto"
             >
               <RefreshCw
                 className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
@@ -1634,7 +1634,7 @@ export default function SolScanner() {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
-          <div className="p-5 space-y-8 flex-1 overflow-y-auto">
+          <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll">
             <div className="flex items-center gap-3 px-2">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
@@ -1833,33 +1833,33 @@ export default function SolScanner() {
                 </div>
               )}
             </nav>
-          </div>
 
-          {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
-          <div className="hidden md:block pt-4 border-t border-white/10 space-y-2 glass-panel">
-            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] px-4 pt-2">
-              Market Pulse
-            </div>
-            <MajorCryptoCard
-              symbol="BTCUSDT"
-              price={majorPrices?.bitcoin?.usd}
-              name="Bitcoin"
-              onClick={setExpandedChartSymbol}
-            />
-            <MajorCryptoCard
-              symbol="ETHUSDT"
-              price={majorPrices?.ethereum?.usd}
-              name="Ethereum"
-              onClick={setExpandedChartSymbol}
-            />
-            <MajorCryptoCard
-              symbol="SOLUSDT"
-              price={majorPrices?.solana?.usd}
-              name="Solana"
-              onClick={setExpandedChartSymbol}
-            />
-            <div className="px-4 py-2 text-[10px] text-slate-500 font-mono text-center">
-              Feed • {lastRefreshed.toLocaleTimeString()}
+            {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
+            <div className="hidden md:block pt-4 border-t border-white/10 space-y-2 glass-panel">
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] px-4 pt-2">
+                Market Pulse
+              </div>
+              <MajorCryptoCard
+                symbol="BTCUSDT"
+                price={majorPrices?.bitcoin?.usd}
+                name="Bitcoin"
+                onClick={setExpandedChartSymbol}
+              />
+              <MajorCryptoCard
+                symbol="ETHUSDT"
+                price={majorPrices?.ethereum?.usd}
+                name="Ethereum"
+                onClick={setExpandedChartSymbol}
+              />
+              <MajorCryptoCard
+                symbol="SOLUSDT"
+                price={majorPrices?.solana?.usd}
+                name="Solana"
+                onClick={setExpandedChartSymbol}
+              />
+              <div className="px-4 py-2 text-[10px] text-slate-500 font-mono text-center">
+                Feed • {lastRefreshed.toLocaleTimeString()}
+              </div>
             </div>
           </div>
         </aside>
@@ -1870,7 +1870,9 @@ export default function SolScanner() {
           <Menu className="w-6 h-6" />
         </button>
         <main className="flex-1 relative flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
-          <div className="flex-1 overflow-y-auto pb-32 md:pb-0">{renderContent()}</div>
+          <div className="flex-1 overflow-y-auto pb-32 md:pb-0 smooth-scroll">
+            {renderContent()}
+          </div>
         </main>
         {/* MOBILE MARKET PULSE (Bottom Fixed - Text Only) */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
