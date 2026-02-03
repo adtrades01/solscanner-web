@@ -611,7 +611,7 @@ const TokenCard = memo(
           </div>
         </div>
 
-        <div className="flex justify-between items-center pt-3 border-t border-white/10 relative z-20">
+        <div className="flex justify-between items-center pt-3 border-t border-white/10 relative z-20 pointer-events-auto">
           <div className="group/tooltip relative">
             <div
               className={`flex items-center gap-1.5 px-2 py-1 rounded-lg glass-chip ${safetyColor} cursor-help`}
@@ -641,7 +641,7 @@ const TokenCard = memo(
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pointer-events-auto">
             {isCustom && (
               <button
                 onClick={(e) => {
@@ -1668,7 +1668,7 @@ export default function SolScanner() {
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
           <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll">
-            <div className="flex items-center gap-3 px-2">
+            <div className="flex items-center gap-3 px-2 -mt-2">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
