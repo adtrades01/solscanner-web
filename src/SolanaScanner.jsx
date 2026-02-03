@@ -348,6 +348,39 @@ const MajorCryptoCard = ({ symbol, price, name, theme = 'dark', onClick }) => {
   );
 };
 
+const LiveSolanaChart = ({ symbol = 'SOLUSDT', theme = 'dark' }) => {
+  const containerRef = useRef();
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = '';
+    const script = document.createElement('script');
+    script.src =
+      'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.type = 'text/javascript';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: `BINANCE:${symbol}`,
+      interval: '15',
+      timezone: 'Etc/UTC',
+      theme: theme,
+      style: '1',
+      locale: 'en',
+      enable_publishing: false,
+      allow_symbol_change: false,
+      support_host: 'https://www.tradingview.com'
+    });
+    containerRef.current.appendChild(script);
+  }, [symbol, theme]);
+
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden border border-white/10 h-48">
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
+  );
+};
+
 // FULL CHART MODAL
 const TradingViewModal = ({ symbol, onClose }) => {
   const containerRef = useRef();
@@ -1671,7 +1704,7 @@ export default function SolScanner() {
               </div>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1 px-1">
               <button
                 onClick={() => {
                   setActiveTab('ai_picks');
@@ -1726,7 +1759,7 @@ export default function SolScanner() {
               </button>
 
               {/* FOLDERS */}
-              <div className="pt-2">
+              <div className="pt-4">
                 <div className="flex items-center justify-between px-3 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
                   Folders
                 </div>
@@ -1778,7 +1811,7 @@ export default function SolScanner() {
               </div>
 
               {/* TOP CALLS */}
-              <div className="pt-4 border-t border-white/10 mt-2">
+              <div className="pt-5 border-t border-white/10 mt-4">
                 <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-semibold text-yellow-400 uppercase tracking-[0.3em]">
                   <Trophy className="w-3 h-3" /> Top Calls (24h)
                 </div>
@@ -1810,7 +1843,7 @@ export default function SolScanner() {
 
               {/* VOLUME ALERTS */}
               {volumeSpikes.length > 0 && (
-                <div className="pt-4 border-t border-white/10 mt-2">
+                <div className="pt-5 border-t border-white/10 mt-4">
                   <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-semibold text-red-400 uppercase tracking-[0.3em] animate-pulse">
                     <Siren className="w-3 h-3" /> Volume Spikes
                   </div>
@@ -1835,10 +1868,18 @@ export default function SolScanner() {
             </nav>
 
             {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
-            <div className="hidden md:block pt-4 border-t border-white/10 space-y-2 glass-panel">
-              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] px-4 pt-2">
-                Market Pulse
+            <div className="hidden md:block space-y-4">
+              <div className="glass-panel rounded-2xl p-4">
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] mb-3">
+                  Live Solana
+                </div>
+                <LiveSolanaChart />
               </div>
+
+              <div className="glass-panel rounded-2xl p-4 space-y-2">
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
+                  Market Pulse
+                </div>
               <MajorCryptoCard
                 symbol="BTCUSDT"
                 price={majorPrices?.bitcoin?.usd}
@@ -1857,9 +1898,10 @@ export default function SolScanner() {
                 name="Solana"
                 onClick={setExpandedChartSymbol}
               />
-              <div className="px-4 py-2 text-[10px] text-slate-500 font-mono text-center">
+              <div className="text-[10px] text-slate-500 font-mono text-center">
                 Feed • {lastRefreshed.toLocaleTimeString()}
               </div>
+            </div>
             </div>
           </div>
         </aside>
