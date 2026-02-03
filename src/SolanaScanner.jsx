@@ -518,8 +518,8 @@ const TokenCard = memo(
     return (
       <div
         className={`glass-card border ${borderColor} rounded-2xl p-5 transition-all group relative overflow-hidden flex flex-col justify-between h-full hover:-translate-y-1 hover:shadow-2xl`}
+        onClick={() => onClick(pair)}
       >
-        <div className="absolute inset-0 z-0 cursor-pointer" onClick={() => onClick(pair)} />
 
         <div className="relative z-10 pointer-events-none">
           <div className="flex justify-between items-start mb-4">
@@ -826,6 +826,20 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                 </span>
                 {formatCurrency(livePair.fdv)}
               </div>
+              {entryMcap && totalGain !== null && (
+                <div className="text-[11px] text-slate-400 font-mono mt-1">
+                  Call MCap:{' '}
+                  <span className="text-white">{formatCurrency(entryMcap)}</span>
+                  <span
+                    className={`ml-2 font-semibold ${
+                      totalGain >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {totalGain > 0 ? '+' : ''}
+                    {totalGain.toFixed(2)}%
+                  </span>
+                </div>
+              )}
               <div
                 className={`text-sm font-mono ${
                   livePair.priceChange?.h24 >= 0 ? 'text-green-500' : 'text-red-500'
@@ -1775,11 +1789,16 @@ export default function SolScanner() {
               <div className="pt-4 border-t border-white/10 mt-4">
                 <button
                   onClick={() => setCryptoOpen((prev) => !prev)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] glass-chip"
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    cryptoOpen
+                      ? 'glass-chip text-emerald-300 border border-emerald-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <span>Crypto</span>
+                  <BarChart2 className="w-4 h-4" />
+                  <span className="text-sm">Crypto</span>
                   <span
-                    className={`text-slate-400 text-[11px] transition-transform ${
+                    className={`ml-auto text-slate-400 text-[11px] transition-transform ${
                       cryptoOpen ? 'rotate-90' : ''
                     }`}
                   >
