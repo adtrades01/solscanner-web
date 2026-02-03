@@ -1961,9 +1961,7 @@ export default function SolScanner() {
           <Menu className="w-6 h-6" />
         </button>
         <main className="flex-1 relative flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
-          <div className="flex-1 overflow-y-auto pb-32 md:pb-0 smooth-scroll">
-            {renderContent()}
-          </div>
+          <div className="flex-1 overflow-hidden pb-32 md:pb-0">{renderContent()}</div>
         </main>
         {/* MOBILE MARKET PULSE (Bottom Fixed - Text Only) */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
