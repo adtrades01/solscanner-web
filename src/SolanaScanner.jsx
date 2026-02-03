@@ -353,39 +353,6 @@ const MajorCryptoCard = ({ symbol, price, name, theme = 'dark', onClick }) => {
   );
 };
 
-const LiveSolanaChart = ({ symbol = 'SOLUSDT', theme = 'dark' }) => {
-  const containerRef = useRef();
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.innerHTML = '';
-    const script = document.createElement('script');
-    script.src =
-      'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.type = 'text/javascript';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
-      symbol: `BINANCE:${symbol}`,
-      interval: '15',
-      timezone: 'Etc/UTC',
-      theme: theme,
-      style: '1',
-      locale: 'en',
-      enable_publishing: false,
-      allow_symbol_change: false,
-      support_host: 'https://www.tradingview.com'
-    });
-    containerRef.current.appendChild(script);
-  }, [symbol, theme]);
-
-  return (
-    <div className="glass-card rounded-2xl overflow-hidden border border-white/10 h-48">
-      <div ref={containerRef} className="w-full h-full" />
-    </div>
-  );
-};
-
 // FULL CHART MODAL
 const TradingViewModal = ({ symbol, onClose }) => {
   const containerRef = useRef();
@@ -1869,23 +1836,24 @@ export default function SolScanner() {
                 <div className="flex items-center justify-between px-3 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
                   Folders
                 </div>
-                <div className="flex items-center gap-2 mb-3 px-3">
+                <div className="px-3 mb-3 space-y-2">
                   <input
                     type="text"
-                    placeholder="New Folder..."
-                    className="glass-chip rounded-lg px-2 py-1 text-xs text-white w-full focus:border-emerald-400 focus:outline-none placeholder-slate-600"
+                    placeholder="Create new folder..."
+                    className="glass-chip rounded-lg px-3 py-2 text-xs text-white w-full focus:border-emerald-400 focus:outline-none placeholder-slate-600"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                   />
                   <button
                     onClick={handleCreateFolder}
-                    className="p-1.5 glass-chip rounded-lg hover:border-emerald-400 text-emerald-300"
+                    className="w-full flex items-center justify-center gap-2 text-xs font-semibold glass-chip rounded-lg hover:border-emerald-400 text-emerald-300 py-2"
                   >
                     <Plus className="w-3 h-3" />
+                    Create Folder
                   </button>
                 </div>
-                <nav className="space-y-0.5">
+                <nav className="space-y-1 px-1">
                   {folders.map((folder) => (
                     <div
                       key={folder.id}
@@ -1901,7 +1869,7 @@ export default function SolScanner() {
                     >
                       <div className="flex items-center gap-3">
                         <Folder className="w-4 h-4" />
-                        <span className="truncate max-w-[100px]">
+                        <span className="truncate max-w-[120px]">
                           {folder.name}
                         </span>
                       </div>
@@ -1913,6 +1881,11 @@ export default function SolScanner() {
                       </button>
                     </div>
                   ))}
+                  {folders.length === 0 && (
+                    <div className="px-3 text-[10px] text-slate-500 italic">
+                      No folders yet. Create one above, then add tokens from cards.
+                    </div>
+                  )}
                 </nav>
               </div>
 
@@ -1991,14 +1964,7 @@ export default function SolScanner() {
             </nav>
 
             {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
-            <div className="hidden md:block space-y-4">
-              <div className="glass-panel rounded-2xl p-4">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] mb-3">
-                  Live Solana
-                </div>
-                <LiveSolanaChart />
-              </div>
-            </div>
+            <div className="hidden md:block space-y-4"></div>
           </div>
         </aside>
         <button
