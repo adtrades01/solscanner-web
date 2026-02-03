@@ -209,29 +209,60 @@ const generateAIThesis = (pair) => {
     narrativeContext = 'No official lore found.';
   }
 
+  const liquiditySignal =
+    liquidity > 200000
+      ? 'deep liquidity base'
+      : liquidity > 50000
+      ? 'healthy liquidity'
+      : liquidity > 10000
+      ? 'thin liquidity'
+      : 'fragile liquidity';
+  const turnoverRatio = liquidity > 0 ? volume24 / liquidity : 0;
+  const velocitySignal =
+    turnoverRatio > 2
+      ? 'high velocity turnover'
+      : turnoverRatio > 0.5
+      ? 'steady rotation'
+      : 'low rotation';
+  const socialSignal =
+    socials.length > 3 ? 'visible social footprint' : 'limited social footprint';
+
   if (liquidity > 100000 && volume24 < liquidity * 0.05) {
     sentiment = 'POTENTIAL HONEYPOT';
     color = 'text-red-500 animate-pulse';
-    thesis = `CRITICAL WARNING: ${symbol} has high liquidity ($${formatNumber(liquidity)}) but almost NO trading volume. This often indicates a 'Honeypot' where users cannot sell.`;
+    thesis = `${symbol} shows a ${liquiditySignal} but almost no trade flow ($${formatNumber(
+      volume24
+    )} in 24h). That mismatch often signals exit risk or honeypot mechanics.`;
   } else if (fdv > 10000000 && volume24 < 50000) {
     sentiment = 'FAKE VALUATION';
     color = 'text-red-500';
-    thesis = `The $${formatNumber(fdv)} Market Cap is likely manipulated. Real volume is non-existent.`;
+    thesis = `${symbol} is priced at $${formatNumber(
+      fdv
+    )} FDV with minimal real demand. Without volume confirmation, the valuation looks synthetic.`;
   } else if (socials.length > 2 && liquidity > 50000) {
     if (volume24 > liquidity * 2) {
       sentiment = `High Velocity ${sector}`;
       color = 'text-purple-400';
-      thesis = `${symbol} is dominating the ${sector} sector right now. Volume turnover is massive ($${formatNumber(volume24)}), indicating a potential breakout.`;
+      thesis = `${symbol} is riding a ${sector} narrative with ${velocitySignal}. Liquidity is sturdy, and the social layer suggests momentum traders are active.`;
     } else {
       sentiment = `Established ${sector}`;
       color = 'text-blue-400';
-      thesis = `${symbol} has solidified its place in the ${sector} narrative. The deep liquidity moat suggests holders are sticky.`;
+      thesis = `${symbol} sits in the ${sector} theme with ${liquiditySignal} and ${velocitySignal}. This reads as a community-held asset rather than pure momentum.`;
     }
   } else {
     sentiment = `Early ${sector}`;
     color = 'text-yellow-400';
-    thesis = `${symbol} is a speculative play in the ${sector} sector. Needs a viral catalyst.`;
+    thesis = `${symbol} is an early ${sector} bet with ${liquiditySignal}, ${velocitySignal}, and a ${socialSignal}. Needs narrative traction or catalyst to unlock liquidity.`;
   }
+
+  const narrativeSnapshot = [
+    `Theme: ${sector}`,
+    `Liquidity: $${formatNumber(liquidity)} (${liquiditySignal})`,
+    `Volume: $${formatNumber(volume24)} (${velocitySignal})`,
+    `Socials: ${socials.length} (${socialSignal})`
+  ].join(' • ');
+
+  thesis = `${thesis}\n\nNarrative snapshot: ${narrativeSnapshot}`;
 
   return { thesis, sentiment, color, sector, narrativeContext };
 };
@@ -1574,6 +1605,9 @@ export default function SolScanner() {
     } else if (activeTab === 'liked') {
       tokensToShow = likedCoins;
       title = 'Watchlist';
+    } else if (activeTab === 'top_calls') {
+      tokensToShow = topCalls.day;
+      title = 'Top Calls';
     } else if (activeTab === 'volume_alerts') {
       tokensToShow = volumeSpikes;
       title = 'Volume Alerts';
@@ -1893,33 +1927,28 @@ export default function SolScanner() {
 
               {/* TOP CALLS */}
               <div className="pt-5 border-t border-white/10 mt-4">
-                <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-semibold text-yellow-400 uppercase tracking-[0.3em]">
-                  <Trophy className="w-3 h-3" /> Top Calls (24h)
-                </div>
-                <div className="space-y-1 px-1">
-                  {topCalls.day.map((t) => (
-                    <div
-                      key={t.pairAddress}
-                      onClick={() => setSelectedPair(t)}
-                      className="cursor-pointer px-3 py-2 rounded-xl glass-chip hover:border-yellow-400/30 transition-colors flex justify-between items-center"
-                    >
-                      <span className="text-xs font-bold text-gray-300">
-                        {t.baseToken?.symbol || 'UNKNOWN'}
-                      </span>
-                      <span className="text-[10px] font-mono text-green-400">
-                        +{(
-                          ((t.currentPrice - t.entryPrice) / t.entryPrice) *
-                          100
-                        ).toFixed(0)}%
-                      </span>
-                    </div>
-                  ))}
-                  {topCalls.day.length === 0 && (
-                    <div className="px-3 text-[10px] text-slate-500 italic">
-                      No data yet...
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    setActiveTab('top_calls');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    activeTab === 'top_calls'
+                      ? 'glass-chip text-yellow-300 border border-yellow-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span className="text-sm">Top Calls (24h)</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                    {topCalls.day.length}
+                  </span>
+                </button>
+                {topCalls.day.length === 0 && (
+                  <div className="px-3 text-[10px] text-slate-500 italic mt-2">
+                    No data yet...
+                  </div>
+                )}
               </div>
 
               {/* VOLUME ALERTS */}
