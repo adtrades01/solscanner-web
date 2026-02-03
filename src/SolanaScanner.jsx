@@ -1663,12 +1663,12 @@ export default function SolScanner() {
       </div>
       <div className="flex flex-1 pt-10 overflow-hidden relative z-10">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-80 glass-panel transform transition-transform duration-300 pt-14 ${
+          className={`fixed inset-y-0 left-0 z-40 w-80 glass-panel transform transition-transform duration-300 pt-10 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
           <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll">
-            <div className="flex items-center gap-3 px-2 -mt-2">
+            <div className="flex items-center gap-3 px-2 -mt-6">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
