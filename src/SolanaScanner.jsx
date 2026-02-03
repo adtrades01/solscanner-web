@@ -1566,7 +1566,7 @@ export default function SolScanner() {
 
     return (
       <div className="p-6 pb-24 md:pb-6">
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <div className="flex items-end justify-between glass-panel rounded-2xl px-6 py-4">
             <div className="flex items-end gap-4">
               <h2 className="text-3xl font-semibold text-white flex items-center gap-3">
@@ -1591,6 +1591,37 @@ export default function SolScanner() {
               />
               Refresh
             </button>
+          </div>
+
+          <div className="glass-panel rounded-2xl px-6 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-[0.3em]">
+                Crypto
+              </h3>
+              <div className="text-[10px] text-slate-500 font-mono">
+                Feed • {lastRefreshed.toLocaleTimeString()}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <MajorCryptoCard
+                symbol="BTCUSDT"
+                price={majorPrices?.bitcoin?.usd}
+                name="Bitcoin"
+                onClick={setExpandedChartSymbol}
+              />
+              <MajorCryptoCard
+                symbol="ETHUSDT"
+                price={majorPrices?.ethereum?.usd}
+                name="Ethereum"
+                onClick={setExpandedChartSymbol}
+              />
+              <MajorCryptoCard
+                symbol="SOLUSDT"
+                price={majorPrices?.solana?.usd}
+                name="Solana"
+                onClick={setExpandedChartSymbol}
+              />
+            </div>
           </div>
 
           {activeTab === 'bluechips' && (
@@ -1663,12 +1694,12 @@ export default function SolScanner() {
       </div>
       <div className="flex flex-1 pt-10 overflow-hidden relative z-10">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-80 glass-panel transform transition-transform duration-300 pt-10 ${
+          className={`fixed inset-y-0 left-0 z-40 w-80 glass-panel transform transition-transform duration-300 pt-11 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
           <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll">
-            <div className="flex items-center gap-3 px-2 -mt-6">
+            <div className="flex items-center gap-3 px-2 -mt-4">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
@@ -1875,33 +1906,6 @@ export default function SolScanner() {
                 </div>
                 <LiveSolanaChart />
               </div>
-
-              <div className="glass-panel rounded-2xl p-4 space-y-2">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
-                  Market Pulse
-                </div>
-              <MajorCryptoCard
-                symbol="BTCUSDT"
-                price={majorPrices?.bitcoin?.usd}
-                name="Bitcoin"
-                onClick={setExpandedChartSymbol}
-              />
-              <MajorCryptoCard
-                symbol="ETHUSDT"
-                price={majorPrices?.ethereum?.usd}
-                name="Ethereum"
-                onClick={setExpandedChartSymbol}
-              />
-              <MajorCryptoCard
-                symbol="SOLUSDT"
-                price={majorPrices?.solana?.usd}
-                name="Solana"
-                onClick={setExpandedChartSymbol}
-              />
-              <div className="text-[10px] text-slate-500 font-mono text-center">
-                Feed • {lastRefreshed.toLocaleTimeString()}
-              </div>
-            </div>
             </div>
           </div>
         </aside>
