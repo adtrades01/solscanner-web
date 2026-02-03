@@ -1083,13 +1083,43 @@ export default function SolScanner() {
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
   const [cryptoOpen, setCryptoOpen] = useState(false);
+  const [volumeOpen, setVolumeOpen] = useState(false);
 
   const alertHistoryRef = useRef({});
+  const previousVolumeCountRef = useRef(0);
+
+  const playAlertSound = () => {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gainNode.gain.value = 0.1;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.15);
+    oscillator.onended = () => audioContext.close();
+  };
 
   // Sync persistent stats to ref for logic check
   useEffect(() => {
     alertHistoryRef.current = { ...savedEntryStats };
   }, [savedEntryStats]);
+
+  useEffect(() => {
+    if (newAlert) playAlertSound();
+  }, [newAlert]);
+
+  useEffect(() => {
+    if (volumeSpikes.length > previousVolumeCountRef.current) {
+      playAlertSound();
+    }
+    previousVolumeCountRef.current = volumeSpikes.length;
+  }, [volumeSpikes]);
 
   // Auth
   useEffect(() => {
@@ -1695,7 +1725,7 @@ export default function SolScanner() {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
-          <div className="p-5 space-y-8 flex-1 overflow-y-auto smooth-scroll overscroll-contain">
+          <div className="p-5 space-y-6 flex-1 overflow-hidden">
             <div className="flex items-center gap-3 px-2 -mt-4">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
@@ -1919,26 +1949,43 @@ export default function SolScanner() {
 
               {/* VOLUME ALERTS */}
               {volumeSpikes.length > 0 && (
-                <div className="pt-5 border-t border-white/10 mt-4">
-                  <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-semibold text-red-400 uppercase tracking-[0.3em] animate-pulse">
-                    <Siren className="w-3 h-3" /> Volume Spikes
-                  </div>
-                  <div className="space-y-1 px-1">
-                    {volumeSpikes.map((t) => (
-                      <div
-                        key={t.pairAddress}
-                        onClick={() => setSelectedPair(t)}
-                        className="cursor-pointer px-3 py-2 rounded-xl glass-chip hover:border-red-400/30 transition-colors flex justify-between items-center"
-                      >
-                        <span className="text-xs font-bold text-gray-300">
-                          {t.baseToken.symbol}
-                        </span>
-                        <span className="text-[10px] font-mono text-red-400">
-                          +{((t.volume.m5 / t.volume.h1) * 100).toFixed(0)}% Vol
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="pt-4 border-t border-white/10 mt-4">
+                  <button
+                    onClick={() => setVolumeOpen((prev) => !prev)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                      volumeOpen
+                        ? 'glass-chip text-red-300 border border-red-400/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Siren className="w-4 h-4" />
+                    <span className="text-sm">Volume Alerts</span>
+                    <span
+                      className={`ml-auto text-slate-400 text-[11px] transition-transform ${
+                        volumeOpen ? 'rotate-90' : ''
+                      }`}
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </button>
+                  {volumeOpen && (
+                    <div className="space-y-1 px-1 mt-3">
+                      {volumeSpikes.map((t) => (
+                        <div
+                          key={t.pairAddress}
+                          onClick={() => setSelectedPair(t)}
+                          className="cursor-pointer px-3 py-2 rounded-xl glass-chip hover:border-red-400/30 transition-colors flex justify-between items-center"
+                        >
+                          <span className="text-xs font-bold text-gray-300">
+                            {t.baseToken.symbol}
+                          </span>
+                          <span className="text-[10px] font-mono text-red-400">
+                            +{((t.volume.m5 / t.volume.h1) * 100).toFixed(0)}% Vol
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </nav>
