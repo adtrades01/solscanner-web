@@ -2055,7 +2055,7 @@ export default function SolScanner() {
   };
 
   return (
-    <div className="min-h-screen text-gray-200 font-sans selection:bg-indigo-500/30 flex flex-col overflow-hidden relative">
+    <div className="min-h-screen text-gray-200 font-sans selection:bg-indigo-500/30 flex flex-col overflow-x-hidden relative">
       <TopTicker items={scannerData} onItemClick={setSelectedPair} />
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_45%),radial-gradient(circle_at_20%_20%,_rgba(16,185,129,0.15),_transparent_40%),radial-gradient(circle_at_80%_0%,_rgba(236,72,153,0.2),_transparent_45%)]"></div>
@@ -2299,8 +2299,8 @@ export default function SolScanner() {
         >
           <Menu className="w-6 h-6" />
         </button>
-        <main className="flex-1 relative flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
-          <div className="flex-1 overflow-hidden pb-32 md:pb-0">{renderContent()}</div>
+        <main className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto pb-32 md:pb-0">{renderContent()}</div>
         </main>
         {/* MOBILE MARKET PULSE (Bottom Fixed - Text Only) */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
