@@ -185,12 +185,17 @@ const analyzeNarrative = (name = '', description = '') => {
   return 'Meme';
 };
 
+const NARRATIVE_HINTS = [
+  {
+    match: ['67'],
+    meaning: 'A popular “67” meme often associated with ironic viral humor and number-based meme culture.'
+  }
+];
+
 const generateAIThesis = (pair) => {
-  const liquidity = pair.liquidity?.usd || 0;
-  const volume24 = pair.volume?.h24 || 0;
-  const fdv = pair.fdv || 0;
   const socials = pair.info?.socials || [];
   const symbol = pair.baseToken.symbol;
+  const name = pair.baseToken.name || symbol;
   const description = pair.info?.header || pair.info?.description || 'No official description found.';
   const sector = analyzeNarrative(pair.baseToken.name, description);
 
@@ -202,36 +207,57 @@ const generateAIThesis = (pair) => {
   const fullDesc = description || '';
   if (fullDesc) {
     // Regex to remove URLs for cleaner text
-    const cleanDesc = fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '');
-    if (cleanDesc.length > 150) narrativeContext = `"${cleanDesc.substring(0, 140)}..."`;
-    else narrativeContext = `"${cleanDesc}"`;
+    const cleaned = fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim();
+    if (cleaned.length > 150) narrativeContext = `"${cleaned.substring(0, 140)}..."`;
+    else narrativeContext = `"${cleaned}"`;
   } else {
     narrativeContext = 'No official lore found.';
   }
 
-  if (liquidity > 100000 && volume24 < liquidity * 0.05) {
-    sentiment = 'POTENTIAL HONEYPOT';
-    color = 'text-red-500 animate-pulse';
-    thesis = `CRITICAL WARNING: ${symbol} has high liquidity ($${formatNumber(liquidity)}) but almost NO trading volume. This often indicates a 'Honeypot' where users cannot sell.`;
-  } else if (fdv > 10000000 && volume24 < 50000) {
-    sentiment = 'FAKE VALUATION';
-    color = 'text-red-500';
-    thesis = `The $${formatNumber(fdv)} Market Cap is likely manipulated. Real volume is non-existent.`;
-  } else if (socials.length > 2 && liquidity > 50000) {
-    if (volume24 > liquidity * 2) {
-      sentiment = `High Velocity ${sector}`;
-      color = 'text-purple-400';
-      thesis = `${symbol} is dominating the ${sector} sector right now. Volume turnover is massive ($${formatNumber(volume24)}), indicating a potential breakout.`;
-    } else {
-      sentiment = `Established ${sector}`;
-      color = 'text-blue-400';
-      thesis = `${symbol} has solidified its place in the ${sector} narrative. The deep liquidity moat suggests holders are sticky.`;
-    }
-  } else {
-    sentiment = `Early ${sector}`;
-    color = 'text-yellow-400';
-    thesis = `${symbol} is a speculative play in the ${sector} sector. Needs a viral catalyst.`;
-  }
+  const cleanDesc = fullDesc
+    ? fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim()
+    : '';
+  const sentenceMatches = cleanDesc.match(/[^.!?]+[.!?]+/g) || [];
+  const shortDesc =
+    cleanDesc.length > 0
+      ? (sentenceMatches.length > 0 ? sentenceMatches : [cleanDesc]).slice(0, 2).join(' ').trim()
+      : '';
+
+  const socialSignal =
+    socials.length > 3 ? 'visible social footprint' : 'limited social footprint';
+  const hasDescription = shortDesc.length > 0;
+
+  const hint = NARRATIVE_HINTS.find(({ match }) =>
+    match.some((token) => name.toLowerCase().includes(token.toLowerCase()) || symbol.toLowerCase() === token.toLowerCase())
+  );
+
+  sentiment = `${sector} Narrative`;
+  color = socials.length > 2 ? 'text-blue-400' : 'text-yellow-400';
+
+  const whatItIs = hasDescription
+    ? shortDesc
+    : hint?.meaning || 'The project has minimal public description, so the core idea is unclear.';
+  const originLine = hint ? `Origin & meme context: ${hint.meaning}` : null;
+  const utilityLine = hasDescription
+    ? 'Utility/story: The description frames the core idea and intended vibe.'
+    : 'Utility/story: Primarily a narrative or meme-driven asset without clear product detail.';
+
+  thesis = [
+    `${symbol} is a ${sector}-themed token.`,
+    `What it is: ${whatItIs}`,
+    originLine,
+    `Community layer: ${socials.length} socials with a ${socialSignal}.`,
+    utilityLine
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const narrativeSnapshot = [
+    `Theme: ${sector}`,
+    `Socials: ${socials.length} (${socialSignal})`
+  ].join(' • ');
+
+  thesis = `${thesis}\n\nNarrative snapshot: ${narrativeSnapshot}`;
 
   return { thesis, sentiment, color, sector, narrativeContext };
 };
@@ -244,6 +270,13 @@ const formatCurrency = (val) => {
   if (val > 1000000) return `$${(val / 1000000).toFixed(2)}M`;
   if (val > 1000) return `$${(val / 1000).toFixed(2)}K`;
   return `$${val.toFixed(2)}`;
+};
+
+const formatCurrencyExact = (val) => {
+  if (val === null || val === undefined || typeof val === 'object') return '$0.00';
+  const num = Number(val) || 0;
+  if (num < 1) return `$${num.toFixed(6)}`;
+  return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const formatNumber = (num) => {
@@ -263,12 +296,12 @@ const AlertToast = ({ token, onClose, onClick }) => {
       onClick={() => onClick(token)}
       className="fixed bottom-20 right-4 md:right-6 z-50 animate-in slide-in-from-right duration-300 cursor-pointer group"
     >
-      <div className="bg-gray-900/90 border border-green-500/50 p-4 rounded-xl shadow-2xl shadow-green-500/10 backdrop-blur-md max-w-sm flex items-start gap-4 transition-transform group-hover:scale-105">
+      <div className="glass-card border border-emerald-400/40 p-4 rounded-2xl max-w-sm flex items-start gap-4 transition-transform group-hover:scale-[1.02]">
         <div className="p-2 bg-green-500/20 rounded-full text-green-400 shrink-0">
           <Bell className="w-5 h-5" />
         </div>
         <div className="flex-1">
-          <h4 className="text-sm font-bold text-white mb-1">New Gem Detected!</h4>
+          <h4 className="text-sm font-semibold text-white mb-1">New Gem Detected!</h4>
           <p className="text-xs text-gray-300 mb-2">
             <span className="font-bold text-green-400">{token.baseToken.symbol}</span> matches your AI safety criteria.
           </p>
@@ -279,7 +312,7 @@ const AlertToast = ({ token, onClose, onClick }) => {
             e.stopPropagation();
             onClose();
           }}
-          className="text-gray-500 hover:text-white"
+          className="text-slate-400 hover:text-white"
         >
           <X className="w-4 h-4" />
         </button>
@@ -319,24 +352,31 @@ const MajorCryptoCard = ({ symbol, price, name, theme = 'dark', onClick }) => {
 
   return (
     <div
-      className="relative w-full bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden group cursor-pointer mb-1 hover:border-gray-600 transition-colors h-14 flex items-center"
+      className="relative w-full glass-card rounded-xl overflow-hidden group cursor-pointer mb-2 transition-all h-16 flex items-center hover:-translate-y-0.5 hover:shadow-xl"
       onClick={() => onClick(`BINANCE:${symbol}`)}
     >
       <div className="absolute inset-0 z-10 bg-transparent" />
 
       <div className="px-4 relative z-20 pointer-events-none flex justify-between items-center w-full">
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{name}</div>
-        <div className="text-sm font-mono font-bold text-white tracking-tight">
-          {typeof price === 'number'
-            ? `$${price.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}`
-            : '...'}
+        <div className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.2em]">
+          {name}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-emerald-300 uppercase tracking-[0.2em]">
+            Live
+          </span>
+          <div className="text-sm font-mono font-semibold text-white tracking-tight">
+            {typeof price === 'number'
+              ? `$${price.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}`
+              : '...'}
+          </div>
         </div>
       </div>
 
-      <div className="absolute right-0 bottom-0 w-1/2 h-full opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none">
+      <div className="absolute right-0 bottom-0 w-1/2 h-full opacity-30 group-hover:opacity-50 transition-opacity pointer-events-none">
         <div
           ref={containerRef}
           className="tradingview-widget-container h-full w-full transform scale-125 origin-center"
@@ -395,18 +435,18 @@ const TopTicker = ({ items, onItemClick }) => {
   if (!items.length) return null;
   const loopedItems = [...items, ...items, ...items];
   return (
-    <div className="fixed top-0 left-0 right-0 h-8 bg-black/90 border-b border-green-900/30 z-50 flex items-center overflow-hidden">
+    <div className="fixed top-0 left-0 right-0 h-9 glass-panel border-b border-white/10 z-50 flex items-center overflow-hidden">
       <div className="flex animate-ticker whitespace-nowrap hover:pause">
         {loopedItems.map((item, i) => (
           <div
             key={`${item.pairAddress}-${i}`}
-            className="flex-shrink-0 flex items-center px-6 text-xs font-mono border-r border-white/5 cursor-pointer hover:bg-white/5 transition-colors whitespace-nowrap"
+            className="flex-shrink-0 flex items-center px-6 text-[11px] font-mono border-r border-white/5 cursor-pointer hover:bg-white/10 transition-colors whitespace-nowrap"
             onClick={() => onItemClick(item)}
           >
-            <span className="font-bold text-green-400 mr-2">
+            <span className="font-bold text-emerald-300 mr-2">
               {item.baseToken.symbol}
             </span>
-            <span className="text-gray-300 mr-2">
+            <span className="text-slate-300 mr-2">
               MCap: {formatCurrency(item.fdv || item.marketCap)}
             </span>
             <span className={item.priceChange?.h24 >= 0 ? 'text-green-500' : 'text-red-500'}>
@@ -436,6 +476,8 @@ const TokenCard = memo(
     isCustom,
     onDelete,
     entryPrice,
+    entryTimestamp,
+    entryMcap,
     ath
   }) => {
     const { score, reasons } = useMemo(() => calculateSafetyScore(pair), [pair]);
@@ -474,17 +516,24 @@ const TokenCard = memo(
     const downFromAth = safeAth > 0 ? ((currentPrice - safeAth) / safeAth) * 100 : 0;
 
     const athValue = safeAth > 0 ? safeAth * (parseFloat(pair.fdv) / currentPrice) : 0;
+    const callMcap =
+      parseFloat(entryMcap) ||
+      (safeEntryPrice > 0
+        ? (parseFloat(pair.fdv || pair.marketCap) || 0) *
+          (safeEntryPrice / (currentPrice || 1))
+        : 0);
+    const callTime = entryTimestamp ? new Date(entryTimestamp) : null;
 
     return (
       <div
-        className={`bg-[#0a0a0a] border ${borderColor} rounded-xl p-4 hover:bg-gray-900 transition-all group relative overflow-hidden flex flex-col justify-between h-full`}
+        className={`glass-card border ${borderColor} rounded-2xl p-5 transition-all group relative overflow-hidden flex flex-col justify-between h-full hover:-translate-y-1 hover:shadow-2xl`}
+        onClick={() => onClick(pair)}
       >
-        <div className="absolute inset-0 z-0 cursor-pointer" onClick={() => onClick(pair)} />
 
         <div className="relative z-10 pointer-events-none">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/5">
+              <div className="w-11 h-11 rounded-xl bg-slate-900/70 flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/10">
                 {pair.info?.imageUrl ? (
                   <img
                     src={pair.info.imageUrl}
@@ -493,17 +542,19 @@ const TokenCard = memo(
                     loading="lazy"
                   />
                 ) : (
-                  <span className="text-xs font-bold text-gray-500">{pair.baseToken.symbol[0]}</span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {pair.baseToken.symbol[0]}
+                  </span>
                 )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-white leading-none truncate">
+                  <h3 className="font-semibold text-white leading-snug break-words whitespace-normal">
                     {pair.baseToken.name}
                   </h3>
                   <button
                     onClick={handleCopyCA}
-                    className="pointer-events-auto p-1 hover:bg-gray-800 rounded text-gray-500 hover:text-white transition-colors flex-shrink-0"
+                    className="pointer-events-auto p-1.5 glass-chip rounded-lg text-slate-400 hover:text-white transition-colors flex-shrink-0"
                     title="Copy CA"
                   >
                     {copied ? (
@@ -513,33 +564,41 @@ const TokenCard = memo(
                     )}
                   </button>
                 </div>
-                <span className="text-xs font-mono text-gray-400 truncate block">
+                <span className="text-xs font-mono text-slate-400 truncate block">
                   {pair.baseToken.symbol}
                 </span>
               </div>
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-sm font-bold font-mono text-white flex items-center justify-end gap-1 whitespace-nowrap">
-                <span className="text-gray-500 text-[10px] uppercase">MCap</span>
+              <div className="text-sm font-semibold font-mono text-white flex items-center justify-end gap-1 whitespace-nowrap">
+                <span className="text-slate-500 text-[10px] uppercase">MCap</span>
                 {formatCurrency(pair.fdv || pair.marketCap)}
               </div>
 
-              {safeEntryPrice > 0 ? (
-                <div className="flex flex-col items-end">
+            {safeEntryPrice > 0 ? (
+                <div className="flex flex-col items-end gap-1">
+                  <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
+                    AI Call MCap:{' '}
+                    <span className="text-white">{formatCurrencyExact(callMcap)}</span>
+                  </div>
                   <div
-                    className={`text-[10px] font-mono font-bold flex items-center gap-1 ${
+                    className={`text-[10px] font-mono font-bold ${
                       sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
                     }`}
                   >
-                    <Rocket className="w-3 h-3" />
                     {sinceEntryPct > 0 ? '+' : ''}
-                    {sinceEntryPct.toFixed(2)}%
+                    {sinceEntryPct.toFixed(2)}% since call
                   </div>
-                  <div className="text-[9px] text-gray-600 font-mono whitespace-nowrap">
+                  {callTime && (
+                    <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
+                      Called {callTime.toLocaleTimeString()}
+                    </div>
+                  )}
+                  <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
                     ATH: {formatCurrency(athValue)}{' '}
                     <span
                       className={
-                        downFromAth < -20 ? 'text-red-500' : 'text-gray-500'
+                        downFromAth < -20 ? 'text-red-400' : 'text-slate-500'
                       }
                     >
                       ({downFromAth.toFixed(1)}%)
@@ -558,32 +617,32 @@ const TokenCard = memo(
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-4">
-            <div className="bg-black/40 rounded p-2 flex flex-col">
-              <span className="text-[10px] text-gray-600 uppercase">Liquidity</span>
-              <span className="text-gray-200 font-mono">
+          <div className="grid grid-cols-2 gap-2 text-xs text-slate-300 mb-4">
+            <div className="glass-chip rounded-xl p-2.5 flex flex-col">
+              <span className="text-[10px] text-slate-500 uppercase">Liquidity</span>
+              <span className="text-slate-100 font-mono">
                 {formatNumber(pair.liquidity?.usd)}
               </span>
             </div>
-            <div className="bg-black/40 rounded p-2 flex flex-col">
-              <span className="text-[10px] text-gray-600 uppercase">Vol (24h)</span>
-              <span className="text-gray-200 font-mono">
+            <div className="glass-chip rounded-xl p-2.5 flex flex-col">
+              <span className="text-[10px] text-slate-500 uppercase">Vol (24h)</span>
+              <span className="text-slate-100 font-mono">
                 {formatNumber(pair.volume?.h24)}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center pt-3 border-t border-white/5 relative z-20">
+        <div className="flex justify-between items-center pt-3 border-t border-white/10 relative z-20 pointer-events-auto">
           <div className="group/tooltip relative">
             <div
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/40 border border-white/5 ${safetyColor} cursor-help`}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg glass-chip ${safetyColor} cursor-help`}
             >
               <SafetyIcon className="w-3.5 h-3.5" />
               <span className="text-xs font-bold">{score}</span>
             </div>
-            <div className="absolute bottom-full left-0 mb-2 w-48 bg-gray-950 border border-gray-800 rounded-lg p-3 shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
-              <h4 className="text-xs font-bold text-white mb-1 border-b border-gray-800 pb-1">
+            <div className="absolute bottom-full left-0 mb-2 w-52 glass-panel rounded-xl p-3 shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
+              <h4 className="text-xs font-semibold text-white mb-1 border-b border-white/10 pb-1">
                 Safety Scan
               </h4>
               {reasons.length > 0 ? (
@@ -604,14 +663,14 @@ const TokenCard = memo(
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pointer-events-auto">
             {isCustom && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(pair.pairAddress);
                 }}
-                className="p-1.5 rounded-md hover:bg-red-900/30 text-gray-500 hover:text-red-400 transition-colors"
+                className="p-1.5 rounded-lg glass-chip text-slate-400 hover:text-red-400 transition-colors"
                 title="Remove"
               >
                 <Trash2 className="w-4 h-4" />
@@ -623,17 +682,17 @@ const TokenCard = memo(
                   e.stopPropagation();
                   setShowFolderMenu(!showFolderMenu);
                 }}
-                className="p-1.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg glass-chip text-slate-400 hover:text-white transition-colors"
               >
                 <Folder className="w-4 h-4" />
               </button>
               {showFolderMenu && (
-                <div className="absolute bottom-full right-0 mb-2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-40">
-                  <div className="px-3 py-2 text-xs font-bold text-gray-500 border-b border-gray-800">
+                <div className="absolute bottom-full right-0 mb-2 w-44 glass-panel rounded-xl shadow-xl overflow-hidden z-40">
+                  <div className="px-3 py-2 text-xs font-semibold text-slate-400 border-b border-white/10">
                     Add to Folder
                   </div>
                   {folders.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-gray-500 italic">
+                    <div className="px-3 py-2 text-xs text-slate-500 italic">
                       No folders created
                     </div>
                   ) : (
@@ -645,7 +704,7 @@ const TokenCard = memo(
                           onAddToFolder(pair, folder.id);
                           setShowFolderMenu(false);
                         }}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-green-900/30 hover:text-green-400 transition-colors"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
                       >
                         {folder.name}
                       </button>
@@ -660,8 +719,8 @@ const TokenCard = memo(
                 e.stopPropagation();
                 onLike(pair);
               }}
-              className={`p-1.5 rounded-md hover:bg-gray-800 transition-colors ${
-                isLiked ? 'text-pink-500' : 'text-gray-400 hover:text-pink-400'
+              className={`p-1.5 rounded-lg glass-chip transition-colors ${
+                isLiked ? 'text-rose-300' : 'text-slate-400 hover:text-rose-300'
               }`}
             >
               <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
@@ -721,18 +780,20 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
     const entryPrice = parseFloat(entryData.entryPrice) || 0;
     if (currentPrice && entryPrice) {
       const ratio = entryPrice / currentPrice;
-      entryMcap = (parseFloat(livePair.fdv) || 0) * ratio;
+      entryMcap =
+        parseFloat(entryData?.entryMcap) ||
+        (parseFloat(livePair.fdv) || 0) * ratio;
       totalGain = ((currentPrice - entryPrice) / entryPrice) * 100;
       ath = parseFloat(entryData.ath) || currentPrice;
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-[#0f0f0f] border border-gray-800 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 relative">
-        <div className="bg-gray-900/50 border-b border-gray-800 p-4 flex justify-between items-center">
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="glass-panel border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 relative">
+        <div className="bg-white/5 border-b border-white/10 p-5 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-black border border-gray-700 overflow-hidden">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900/70 border border-white/10 overflow-hidden">
               {livePair.info?.imageUrl && (
                 <img
                   src={livePair.info.imageUrl}
@@ -743,12 +804,12 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-semibold text-white">
                   {livePair.baseToken.name}
                 </h2>
                 <button
                   onClick={handleCopyCA}
-                  className="flex items-center gap-1 text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded-lg transition-colors text-gray-300"
+                  className="flex items-center gap-1 text-xs glass-chip px-2 py-1 rounded-lg transition-colors text-slate-300 hover:text-white"
                 >
                   {copied ? (
                     <Check className="w-3 h-3 text-green-500" />
@@ -758,11 +819,11 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   {copied ? 'Copied' : 'Copy CA'}
                 </button>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+              <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
                 <span className="font-mono text-xs">
                   {livePair.baseToken.address}
                 </span>
-                <span className="flex items-center gap-1 text-green-400 animate-pulse text-xs">
+                <span className="flex items-center gap-1 text-emerald-400 animate-pulse text-xs">
                   <Clock className="w-3 h-3" /> Live
                 </span>
               </div>
@@ -770,12 +831,29 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
-              <div className="text-2xl font-bold font-mono text-white flex items-center gap-2 justify-end">
-                <span className="text-xs text-gray-500 uppercase font-sans">
+              <div className="text-2xl font-semibold font-mono text-white flex items-center gap-2 justify-end">
+                <span className="text-xs text-slate-500 uppercase font-sans">
                   Market Cap
                 </span>
                 {formatCurrency(livePair.fdv)}
               </div>
+              {entryMcap && totalGain !== null && entryData?.timestamp && (
+                <div className="text-[11px] text-slate-400 font-mono mt-1">
+                  AI Call MCap:{' '}
+                  <span className="text-white">{formatCurrencyExact(entryMcap)}</span>
+                  <span
+                    className={`ml-2 font-semibold ${
+                      totalGain >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {totalGain > 0 ? '+' : ''}
+                    {totalGain.toFixed(2)}% since call
+                  </span>
+                  <span className="ml-2 text-slate-500">
+                    ({new Date(entryData.timestamp).toLocaleTimeString()})
+                  </span>
+                </div>
+              )}
               <div
                 className={`text-sm font-mono ${
                   livePair.priceChange?.h24 >= 0 ? 'text-green-500' : 'text-red-500'
@@ -786,7 +864,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white"
+              className="p-2 glass-chip rounded-full text-slate-400 hover:text-white"
             >
               <X className="w-6 h-6" />
             </button>
@@ -794,7 +872,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          <div className="flex-1 bg-black relative h-[35vh] md:h-auto md:flex-1 shrink-0 border-b md:border-b-0 md:border-r border-gray-800">
+          <div className="flex-1 bg-slate-950/70 relative h-[35vh] md:h-auto md:flex-1 shrink-0 border-b md:border-b-0 md:border-r border-white/10">
             <iframe
               src={`https://dexscreener.com/solana/${livePair.pairAddress}?embed=1&theme=dark&trades=0&info=0`}
               className="absolute inset-0 w-full h-full border-0"
@@ -802,35 +880,35 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
             />
           </div>
 
-          <div className="flex-1 w-full md:w-96 bg-[#111] overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 w-full md:w-96 bg-transparent overflow-y-auto p-6 space-y-6">
             {/* REPORT RUG */}
             <button
               onClick={() => {
                 onReportRug(livePair.pairAddress);
                 onClose();
               }}
-              className="w-full flex items-center justify-center gap-2 bg-red-900/20 border border-red-500/20 text-red-400 hover:bg-red-900/40 hover:text-red-200 p-3 rounded-xl transition-colors font-bold text-xs"
+              className="w-full flex items-center justify-center gap-2 glass-chip border border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200 p-3 rounded-2xl transition-colors font-semibold text-xs"
             >
               <AlertTriangle className="w-4 h-4" /> REPORT RUG / BAD CALL (Train AI)
             </button>
 
             {/* ENTRY STATS */}
             {entryMcap && (
-              <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-wider">
+              <div className="glass-card border border-sky-400/30 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-sky-300 text-xs font-semibold uppercase tracking-wider">
                   <Rocket className="w-4 h-4" /> Discovery Stats
                 </div>
                 <div className="flex justify-between items-end">
                   <div>
-                    <div className="text-[10px] text-gray-500">Detected At MCap</div>
-                    <div className="text-lg font-mono text-white font-bold">
+                    <div className="text-[10px] text-slate-500">Detected At MCap</div>
+                    <div className="text-lg font-mono text-white font-semibold">
                       {formatCurrency(entryMcap)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-gray-500">Total Gain</div>
+                    <div className="text-[10px] text-slate-500">Total Gain</div>
                     <div
-                      className={`text-xl font-mono font-bold ${
+                      className={`text-xl font-mono font-semibold ${
                         totalGain >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}
                     >
@@ -840,8 +918,8 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   </div>
                 </div>
                 {ath && (
-                  <div className="text-[10px] text-gray-400 text-right pt-2 border-t border-blue-500/20 mt-2">
-                    ATH Since Discovery: <span className="text-white font-bold font-mono">
+                  <div className="text-[10px] text-slate-400 text-right pt-2 border-t border-sky-400/20 mt-2">
+                    ATH Since Discovery: <span className="text-white font-semibold font-mono">
                       {formatCurrency(
                         ath * (parseFloat(livePair.fdv) / parseFloat(livePair.priceUsd))
                       )}
@@ -852,42 +930,42 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
             )}
 
             {/* AI THESIS SECTION */}
-            <div className="bg-gradient-to-b from-purple-900/20 to-transparent p-4 rounded-xl border border-purple-500/20">
+            <div className="glass-card border border-violet-400/20 p-4 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <BrainCircuit className="w-5 h-5 text-purple-400" />
-                  <span className="text-sm font-bold text-white">Narrative Scan</span>
+                  <BrainCircuit className="w-5 h-5 text-violet-300" />
+                  <span className="text-sm font-semibold text-white">Narrative Scan</span>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded-full">
+                <span className="text-[10px] px-2 py-0.5 glass-chip text-violet-200 rounded-full">
                   {sector}
                 </span>
               </div>
-              <div className={`text-lg font-bold mb-2 ${color}`}>{sentiment}</div>
-              <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">
+              <div className={`text-lg font-semibold mb-2 ${color}`}>{sentiment}</div>
+              <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
                 {thesis}
               </p>
-              <div className="mt-2 p-2 bg-black/40 rounded text-[10px] text-gray-500 italic border-l-2 border-gray-700">
+              <div className="mt-2 p-2 glass-chip rounded text-[10px] text-slate-400 italic border-l-2 border-white/10">
                 "{narrativeContext}"
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-[0.3em] border-b border-white/10 pb-2">
                 Due Diligence
               </div>
 
               <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-400">
+                <div className="flex justify-between text-[10px] text-slate-400">
                   <span>Buys: {txns.buys}</span>
                   <span>Sells: {txns.sells}</span>
                 </div>
-                <div className="h-2 bg-red-500/30 rounded-full overflow-hidden flex">
+                <div className="h-2 bg-red-500/20 rounded-full overflow-hidden flex">
                   <div
-                    className="h-full bg-green-500"
+                    className="h-full bg-emerald-400"
                     style={{ width: `${buyPressure}%` }}
                   ></div>
                 </div>
-                <div className="text-center text-[10px] text-gray-500">
+                <div className="text-center text-[10px] text-slate-500">
                   {buyPressure.toFixed(0)}% Buy Pressure (1h)
                 </div>
               </div>
@@ -897,10 +975,10 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   href={`https://app.bubblemaps.io/sol/token/${livePair.baseToken.address}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 p-3 bg-gray-800/50 hover:bg-blue-600/20 border border-gray-800 hover:border-blue-500 rounded-lg transition-all group"
+                  className="flex items-center justify-center gap-2 p-3 glass-chip hover:border-sky-400/40 rounded-xl transition-all group"
                 >
-                  <Map className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
-                  <span className="text-xs text-gray-400 group-hover:text-white">
+                  <Map className="w-4 h-4 text-sky-300 group-hover:text-sky-200" />
+                  <span className="text-xs text-slate-300 group-hover:text-white">
                     Bubblemap
                   </span>
                 </a>
@@ -909,23 +987,25 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   href={`https://solscan.io/token/${livePair.baseToken.address}#holders`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 p-3 bg-gray-800/50 hover:bg-purple-600/20 border border-gray-800 hover:border-purple-500 rounded-lg transition-all group"
+                  className="flex items-center justify-center gap-2 p-3 glass-chip hover:border-violet-400/40 rounded-xl transition-all group"
                 >
-                  <Database className="w-4 h-4 text-purple-400 group-hover:text-purple-300" />
-                  <span className="text-xs text-gray-400 group-hover:text-white">
+                  <Database className="w-4 h-4 text-violet-300 group-hover:text-violet-200" />
+                  <span className="text-xs text-slate-300 group-hover:text-white">
                     Holders List
                   </span>
                 </a>
               </div>
             </div>
 
-            <div className="bg-gray-900/30 rounded-xl p-4 border border-gray-800">
+            <div className="glass-card rounded-2xl p-4 border border-white/10">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-green-500" /> Safety Score
+                <span className="text-sm font-semibold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Safety Score
                 </span>
                 <span
-                  className={`text-lg font-bold ${score > 80 ? 'text-green-500' : 'text-red-500'}`}
+                  className={`text-lg font-semibold ${
+                    score > 80 ? 'text-emerald-400' : 'text-red-400'
+                  }`}
                 >
                   {score}/100
                 </span>
@@ -935,14 +1015,14 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   {reasons.map((r, i) => (
                     <li
                       key={i}
-                      className="text-xs text-red-400 flex items-start gap-2 bg-red-900/10 p-2 rounded"
+                      className="text-xs text-red-300 flex items-start gap-2 bg-red-500/10 p-2 rounded-xl"
                     >
                       <ShieldAlert className="w-3 h-3 shrink-0 mt-0.5" /> {r}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="text-xs text-green-400 bg-green-900/10 p-2 rounded mb-4 flex items-center gap-2">
+                <div className="text-xs text-emerald-300 bg-emerald-500/10 p-2 rounded-xl mb-4 flex items-center gap-2">
                   <ShieldCheck className="w-3 h-3" /> No flags.
                 </div>
               )}
@@ -950,7 +1030,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                 href={`https://rugcheck.xyz/tokens/${livePair.baseToken.address}`}
                 target="_blank"
                 rel="noreferrer"
-                className="block w-full text-center py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+                className="block w-full text-center py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl transition-colors"
               >
                 Detailed Rug Report
               </a>
@@ -963,7 +1043,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   href={w.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg text-xs text-gray-300 transition-colors"
+                  className="flex items-center justify-center gap-2 glass-chip hover:bg-white/10 py-2 rounded-xl text-xs text-slate-300 transition-colors"
                 >
                   <Globe className="w-3 h-3" /> Website
                 </a>
@@ -974,7 +1054,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   href={s.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg text-xs text-gray-300 transition-colors capitalize"
+                  className="flex items-center justify-center gap-2 glass-chip hover:bg-white/10 py-2 rounded-xl text-xs text-slate-300 transition-colors capitalize"
                 >
                   <Users className="w-3 h-3" /> {s.type}
                 </a>
@@ -1016,13 +1096,74 @@ export default function SolScanner() {
   const [blacklist, setBlacklist] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
+  const [cryptoOpen, setCryptoOpen] = useState(false);
+  const [localFolders, setLocalFolders] = useState([]);
+  const [localFolderItems, setLocalFolderItems] = useState([]);
+  const [localLikedCoins, setLocalLikedCoins] = useState([]);
+  const [localEntryStats, setLocalEntryStats] = useState({});
+  const [entryStatsLoaded, setEntryStatsLoaded] = useState(false);
 
   const alertHistoryRef = useRef({});
+  const previousVolumeCountRef = useRef(0);
+  const audioContextRef = useRef(null);
+  const localEntryStatsRef = useRef({});
+
+  const getAudioContext = () => {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  };
+
+  const playAlertSound = () => {
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gainNode.gain.value = 0.1;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.15);
+  };
+
+  const playClickSound = () => {
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = 520;
+    gainNode.gain.value = 0.12;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.08);
+  };
 
   // Sync persistent stats to ref for logic check
   useEffect(() => {
     alertHistoryRef.current = { ...savedEntryStats };
   }, [savedEntryStats]);
+
+  useEffect(() => {
+    if (newAlert) playAlertSound();
+  }, [newAlert]);
+
+  useEffect(() => {
+    if (volumeSpikes.length > previousVolumeCountRef.current) {
+      playAlertSound();
+    }
+    previousVolumeCountRef.current = volumeSpikes.length;
+  }, [volumeSpikes]);
 
   // Auth
   useEffect(() => {
@@ -1038,11 +1179,38 @@ export default function SolScanner() {
     return () => unsubscribe();
   }, []);
 
-  // User Data
   useEffect(() => {
-    if (!user) return;
+    if (typeof window === 'undefined') return;
+    const storedFolders = JSON.parse(localStorage.getItem('local_folders') || '[]');
+    const storedFolderItems = JSON.parse(localStorage.getItem('local_folder_items') || '[]');
+    const storedLiked = JSON.parse(localStorage.getItem('local_liked_coins') || '[]');
+    const storedEntryStats = JSON.parse(
+      localStorage.getItem('local_entry_stats') || '{}'
+    );
+    setLocalFolders(storedFolders);
+    setLocalFolderItems(storedFolderItems);
+    setLocalLikedCoins(storedLiked);
+    setLocalEntryStats(storedEntryStats);
+  }, []);
 
-    // PUBLIC DATA (Universal Feed)
+  useEffect(() => {
+    localEntryStatsRef.current = localEntryStats;
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('local_entry_stats', JSON.stringify(localEntryStats));
+  }, [localEntryStats]);
+
+  useEffect(() => {
+    const handleClick = () => playClickSound();
+    document.addEventListener('pointerdown', handleClick);
+    return () => document.removeEventListener('pointerdown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (!user) setEntryStatsLoaded(false);
+  }, [user]);
+
+  // Public Data (Universal Feed)
+  useEffect(() => {
     const unsubPublic = onSnapshot(
       collection(db, 'artifacts', appId, 'public', 'data', 'discovered_coins'),
       (snap) => {
@@ -1050,14 +1218,26 @@ export default function SolScanner() {
         // Calculate Top Gainers
         const sorted = publicCoins
           .sort((a, b) => {
-            const gainA = (a.currentPrice - a.entryPrice) / a.entryPrice;
-            const gainB = (b.currentPrice - b.entryPrice) / b.entryPrice;
+            const entryA = parseFloat(a.entryPrice) || 0;
+            const entryB = parseFloat(b.entryPrice) || 0;
+            const currA = parseFloat(a.currentPrice) || 0;
+            const currB = parseFloat(b.currentPrice) || 0;
+            const gainA = entryA > 0 ? (currA - entryA) / entryA : 0;
+            const gainB = entryB > 0 ? (currB - entryB) / entryB : 0;
             return gainB - gainA;
           })
+          .filter((item) => item?.pairAddress)
           .slice(0, 5);
         setTopCalls((prev) => ({ ...prev, day: sorted }));
       }
     );
+
+    return () => unsubPublic();
+  }, []);
+
+  // User Data
+  useEffect(() => {
+    if (!user) return;
 
     const unsubFolders = onSnapshot(
       collection(db, 'artifacts', appId, 'users', user.uid, 'folders'),
@@ -1084,6 +1264,7 @@ export default function SolScanner() {
         const stats = {};
         snap.docs.forEach((d) => (stats[d.id] = d.data()));
         setSavedEntryStats(stats);
+        setEntryStatsLoaded(true);
       }
     );
     const unsubBlacklist = onSnapshot(
@@ -1107,7 +1288,6 @@ export default function SolScanner() {
       unsubStats();
       unsubFolderItems();
       unsubBlacklist();
-      unsubPublic();
     };
   }, [user]);
 
@@ -1231,9 +1411,32 @@ export default function SolScanner() {
       setTrendingData(trending);
       setAiPicks(ai);
       setScannerData(rawPairs);
+      if (!user) {
+        const updates = {};
+        rawPairs.forEach((pair) => {
+          const existing = localEntryStatsRef.current[pair.pairAddress];
+          const currentPrice = Number(pair.priceUsd) || 0;
+          if (!existing) {
+            updates[pair.pairAddress] = {
+              entryPrice: currentPrice,
+              ath: currentPrice,
+              entryMcap: Number(pair.fdv || pair.marketCap) || 0,
+              timestamp: Date.now()
+            };
+          } else if (currentPrice > (existing.ath || 0)) {
+            updates[pair.pairAddress] = {
+              ...existing,
+              ath: currentPrice
+            };
+          }
+        });
+        if (Object.keys(updates).length > 0) {
+          setLocalEntryStats((prev) => ({ ...prev, ...updates }));
+        }
+      }
       setLastRefreshed(new Date());
 
-      if (user && rawPairs.length > 0) {
+      if (user && rawPairs.length > 0 && entryStatsLoaded) {
         const batch = writeBatch(db);
         let count = 0;
         let latestNewGem = null;
@@ -1274,6 +1477,7 @@ export default function SolScanner() {
             batch.set(ref, {
               entryPrice: Number(t.priceUsd),
               ath: Number(t.priceUsd),
+              entryMcap: Number(t.fdv || t.marketCap) || 0,
               timestamp: Date.now()
             });
             count++;
@@ -1315,7 +1519,7 @@ export default function SolScanner() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => fetchData(false), 1000); // 1s Auto Refresh
+    const interval = setInterval(() => fetchData(false), 500); // 0.5s Auto Refresh
     return () => clearInterval(interval);
   }, [customBluechips, savedEntryStats, blacklist]);
 
@@ -1422,7 +1626,17 @@ export default function SolScanner() {
   };
 
   const handleLike = async (pair) => {
-    if (!user) return;
+    if (!user) {
+      setLocalLikedCoins((prev) => {
+        const exists = prev.find((c) => c.pairAddress === pair.pairAddress);
+        const updated = exists
+          ? prev.filter((c) => c.pairAddress !== pair.pairAddress)
+          : [...prev, { ...pair, likedAt: Date.now(), pairAddress: pair.pairAddress }];
+        localStorage.setItem('local_liked_coins', JSON.stringify(updated));
+        return updated;
+      });
+      return;
+    }
     const isLiked = likedCoins.find((c) => c.pairAddress === pair.pairAddress);
     const docRef = doc(
       db,
@@ -1443,7 +1657,15 @@ export default function SolScanner() {
   };
 
   const handleCreateFolder = async () => {
-    if (!user || !newFolderName.trim()) return;
+    if (!newFolderName.trim()) return;
+    if (!user) {
+      const folderId = `local_${Date.now()}`;
+      const updated = [...localFolders, { id: folderId, name: newFolderName, createdAt: Date.now() }];
+      setLocalFolders(updated);
+      localStorage.setItem('local_folders', JSON.stringify(updated));
+      setNewFolderName('');
+      return;
+    }
     const folderId = `folder_${Date.now()}`;
     await setDoc(
       doc(
@@ -1462,7 +1684,16 @@ export default function SolScanner() {
 
   const handleDeleteFolder = async (folderId, e) => {
     e.stopPropagation();
-    if (!user) return;
+    if (!user) {
+      const updated = localFolders.filter((f) => f.id !== folderId);
+      setLocalFolders(updated);
+      localStorage.setItem('local_folders', JSON.stringify(updated));
+      const items = localFolderItems.filter((item) => item.folderId !== folderId);
+      setLocalFolderItems(items);
+      localStorage.setItem('local_folder_items', JSON.stringify(items));
+      if (activeTab === `folder:${folderId}`) setActiveTab('ai_picks');
+      return;
+    }
     await deleteDoc(
       doc(
         db,
@@ -1478,7 +1709,22 @@ export default function SolScanner() {
   };
 
   const handleAddToFolder = async (pair, folderId) => {
-    if (!user) return;
+    if (!user) {
+      const item = {
+        ...pair,
+        folderId,
+        addedAt: Date.now()
+      };
+      const updated = [
+        ...localFolderItems.filter(
+          (existing) => existing.pairAddress !== pair.pairAddress || existing.folderId !== folderId
+        ),
+        item
+      ];
+      setLocalFolderItems(updated);
+      localStorage.setItem('local_folder_items', JSON.stringify(updated));
+      return;
+    }
     const itemRef = doc(
       db,
       'artifacts',
@@ -1509,15 +1755,31 @@ export default function SolScanner() {
       tokensToShow = bluechipData;
       title = 'Bluechip Zone';
     } else if (activeTab === 'liked') {
-      tokensToShow = likedCoins;
+      tokensToShow = user ? likedCoins : localLikedCoins;
       title = 'Watchlist';
+    } else if (activeTab === 'top_calls') {
+      tokensToShow = topCalls.day;
+      title = 'Top Calls';
+    } else if (activeTab === 'volume_alerts') {
+      tokensToShow = volumeSpikes;
+      title = 'Volume Alerts';
+    } else if (activeTab === 'folders') {
+      tokensToShow = [];
+      title = 'Folders';
     } else if (activeTab.startsWith('folder:')) {
       const folderId = activeTab.split(':')[1];
-      tokensToShow = folderItems.filter((item) => item.folderId === folderId);
-      title = folders.find((f) => f.id === folderId)?.name || 'Folder';
+      const folderList = user ? folders : localFolders;
+      const items = user ? folderItems : localFolderItems;
+      tokensToShow = items.filter((item) => item.folderId === folderId);
+      title = folderList.find((f) => f.id === folderId)?.name || 'Folder';
     }
 
-    if (loading && tokensToShow.length === 0)
+    const showLoadingState =
+      loading &&
+      tokensToShow.length === 0 &&
+      ['ai_picks', 'trending', 'bluechips', 'volume_alerts'].includes(activeTab);
+
+    if (showLoadingState)
       return (
         <div className="flex flex-col items-center justify-center h-full text-green-500 animate-pulse mt-20">
           <Activity className="w-12 h-12 mb-4" />
@@ -1527,10 +1789,10 @@ export default function SolScanner() {
 
     return (
       <div className="p-6 pb-24 md:pb-6">
-        <div className="mb-6">
-          <div className="flex items-end justify-between border-b border-gray-800 pb-4">
+        <div className="mb-6 space-y-4">
+          <div className="flex items-end justify-between glass-panel rounded-2xl px-6 py-4">
             <div className="flex items-end gap-4">
-              <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h2 className="text-3xl font-semibold text-white flex items-center gap-3">
                 {title}
                 {activeTab === 'ai_picks' && (
                   <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
@@ -1539,30 +1801,28 @@ export default function SolScanner() {
                   <Flame className="w-5 h-5 text-orange-500 animate-pulse" />
                 )}
               </h2>
-              <span className="text-gray-500 font-mono text-sm mb-1">
+              <span className="text-slate-400 font-mono text-sm mb-1">
                 {tokensToShow.length} Pairs Found
               </span>
             </div>
             <button
-              onClick={() => fetchData(true)}
-              className="bg-green-900/20 hover:bg-green-900/40 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-all"
+              onClick={() => window.location.reload()}
+              className="glass-chip hover:bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all pointer-events-auto"
             >
-              <RefreshCw
-                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-              />
+              <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
           </div>
 
           {activeTab === 'bluechips' && (
-            <div className="mt-4 bg-purple-900/10 border border-purple-500/20 rounded-xl p-4 flex items-center gap-4">
-              <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+            <div className="mt-4 glass-panel border border-violet-400/20 rounded-2xl p-4 flex items-center gap-4">
+              <div className="p-2 bg-violet-500/20 rounded-lg text-violet-300">
                 <PlusCircle className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <input
                   type="text"
-                  className="w-full bg-transparent border-b border-purple-500/30 text-white text-sm py-1 focus:outline-none focus:border-purple-500 placeholder-purple-300/30 font-mono"
+                  className="w-full bg-transparent border-b border-violet-400/30 text-white text-sm py-1 focus:outline-none focus:border-violet-400 placeholder-violet-200/40 font-mono"
                   placeholder="Paste Contract Address (CA) to add custom bluechip..."
                   value={bluechipInput}
                   onChange={(e) => setBluechipInput(e.target.value)}
@@ -1572,7 +1832,7 @@ export default function SolScanner() {
               <button
                 onClick={handleAddBluechip}
                 disabled={isAddingBluechip}
-                className="text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition-colors"
+                className="text-xs font-semibold bg-violet-500 hover:bg-violet-400 text-white px-4 py-2 rounded-xl transition-colors"
               >
                 {isAddingBluechip ? 'Adding...' : 'ADD COIN'}
               </button>
@@ -1580,11 +1840,115 @@ export default function SolScanner() {
           )}
         </div>
 
-        {tokensToShow.length === 0 ? (
-          <div className="text-center py-20 text-gray-700 border border-gray-900 border-dashed rounded-xl">
+        {activeTab === 'folders' ? (
+          <div className="glass-panel rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-[0.3em]">
+                Create Folder
+              </h3>
+            </div>
+            <div className="flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder="Create new folder..."
+                className="glass-chip rounded-lg px-3 py-2 text-sm text-white w-full focus:border-emerald-400 focus:outline-none placeholder-slate-600"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+              />
+              <button
+                onClick={handleCreateFolder}
+                className="glass-chip rounded-lg px-4 py-2 text-sm text-emerald-300 hover:border-emerald-400"
+              >
+                Create Folder
+              </button>
+            </div>
+            <div className="mt-6 space-y-2">
+              {(user ? folders : localFolders).map((folder) => (
+                <div
+                  key={folder.id}
+                  onClick={() => setActiveTab(`folder:${folder.id}`)}
+                  className="glass-card rounded-xl px-4 py-3 cursor-pointer flex items-center justify-between"
+                >
+                  <span className="text-sm text-white">{folder.name}</span>
+                  <button
+                    onClick={(e) => handleDeleteFolder(folder.id, e)}
+                    className="text-slate-400 hover:text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {(user ? folders : localFolders).length === 0 && (
+                <div className="text-xs text-slate-500 italic">
+                  No folders yet. Create one above to organize tokens.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : tokensToShow.length === 0 ? (
+          <div className="text-center py-20 text-slate-500 border border-white/10 border-dashed rounded-2xl glass-panel">
             {activeTab === 'ai_picks'
               ? 'Market is quiet. No high-conviction setups found.'
               : 'No signals detected.'}
+          </div>
+        ) : activeTab === 'top_calls' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tokensToShow.map((call) => {
+              const entryPrice = parseFloat(call.entryPrice) || 0;
+              const currentPrice = parseFloat(call.currentPrice) || 0;
+              const gain =
+                entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+              return (
+                <div
+                  key={call.pairAddress}
+                  className="glass-card rounded-2xl p-5 border border-white/10 hover:-translate-y-1 transition-all cursor-pointer"
+                  onClick={() => call?.pairAddress && setSelectedPair(call)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-[0.3em]">
+                        Top Call
+                      </div>
+                      <div className="text-lg font-semibold text-white">
+                        {call.baseToken?.symbol || call.baseToken?.name || 'Token'}
+                      </div>
+                    </div>
+                    <div
+                      className={`text-sm font-mono font-bold ${
+                        gain >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}
+                    >
+                      {gain > 0 ? '+' : ''}
+                      {gain.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs text-slate-300">
+                    <div className="glass-chip rounded-xl p-3">
+                      <div className="text-[10px] text-slate-500 uppercase">
+                        Call Price
+                      </div>
+                      <div className="text-slate-100 font-mono">
+                        {formatCurrencyExact(entryPrice)}
+                      </div>
+                    </div>
+                    <div className="glass-chip rounded-xl p-3">
+                      <div className="text-[10px] text-slate-500 uppercase">
+                        Current Price
+                      </div>
+                      <div className="text-slate-100 font-mono">
+                        {formatCurrencyExact(currentPrice)}
+                      </div>
+                    </div>
+                  </div>
+                  {call.entryMcap && (
+                    <div className="mt-3 text-[10px] text-slate-500 font-mono">
+                      Call MCap: <span className="text-white">{formatCurrencyExact(call.entryMcap)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1592,19 +1956,24 @@ export default function SolScanner() {
               const isCustom =
                 activeTab === 'bluechips' &&
                 customBluechips.some((c) => c.ca === pair.baseToken.address);
-              const stats = savedEntryStats[pair.pairAddress];
+              const stats = user
+                ? savedEntryStats[pair.pairAddress]
+                : localEntryStats[pair.pairAddress];
+              const likedList = user ? likedCoins : localLikedCoins;
               return (
                 <TokenCard
                   key={pair.pairAddress}
                   pair={pair}
                   onLike={handleLike}
-                  isLiked={likedCoins.some((c) => c.pairAddress === pair.pairAddress)}
-                  folders={folders}
+                  isLiked={likedList.some((c) => c.pairAddress === pair.pairAddress)}
+                  folders={user ? folders : localFolders}
                   onAddToFolder={handleAddToFolder}
                   onClick={setSelectedPair}
                   isCustom={isCustom}
                   onDelete={handleDeleteCustomBluechip}
                   entryPrice={stats?.entryPrice}
+                  entryTimestamp={stats?.timestamp}
+                  entryMcap={stats?.entryMcap}
                   ath={stats?.ath}
                 />
               );
@@ -1616,32 +1985,41 @@ export default function SolScanner() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-200 font-sans selection:bg-green-500/30 flex flex-col overflow-hidden">
+    <div className="min-h-screen text-gray-200 font-sans selection:bg-indigo-500/30 flex flex-col overflow-x-hidden relative">
       <TopTicker items={scannerData} onItemClick={setSelectedPair} />
-      <div className="flex flex-1 pt-8 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_45%),radial-gradient(circle_at_20%_20%,_rgba(16,185,129,0.15),_transparent_40%),radial-gradient(circle_at_80%_0%,_rgba(236,72,153,0.2),_transparent_45%)]"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+      </div>
+      <div className="flex flex-1 pt-10 overflow-hidden relative z-10">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#050505] border-r border-gray-900 transform transition-transform duration-300 pt-12 ${
+          className={`fixed inset-y-0 left-0 z-40 w-80 glass-panel transform transition-transform duration-300 pt-11 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 md:static md:block flex flex-col`}
         >
-          <div className="p-4 space-y-8 flex-1 overflow-y-auto">
-            <div className="flex items-center gap-2 px-2">
-              <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center text-black font-bold">
+          <div className="p-5 space-y-6 flex-1 overflow-hidden">
+            <div className="flex items-center gap-3 px-2 -mt-4">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-400 to-emerald-300 flex items-center justify-center text-slate-950 font-bold shadow-lg">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
-              <span className="font-bold text-xl text-white tracking-tight">
-                SolScanner
-              </span>
+              <div>
+                <span className="font-semibold text-xl text-white tracking-tight">
+                  SolScanner
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  Real-time Solana intelligence
+                </p>
+              </div>
             </div>
 
             <div className="px-1">
-              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-2">
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] mb-2">
                 Contract Lookup
               </div>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="w-full bg-gray-900 border border-gray-800 rounded text-xs px-2 py-2 focus:border-green-500 focus:outline-none"
+                  className="w-full glass-chip rounded-xl text-xs px-3 py-2.5 focus:border-emerald-400 focus:outline-none"
                   placeholder="Paste Address..."
                   value={caInput}
                   onChange={(e) => setCaInput(e.target.value)}
@@ -1649,14 +2027,14 @@ export default function SolScanner() {
                 />
                 <button
                   onClick={handleCASearch}
-                  className="bg-gray-800 hover:bg-green-600 hover:text-white rounded p-2 text-gray-400 transition-colors"
+                  className="glass-chip hover:bg-emerald-500/20 hover:text-white rounded-xl p-2.5 text-slate-400 transition-colors"
                 >
                   <SearchCode className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1 px-1">
               <button
                 onClick={() => {
                   setActiveTab('ai_picks');
@@ -1664,8 +2042,8 @@ export default function SolScanner() {
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
                   activeTab === 'ai_picks'
-                    ? 'bg-green-900/20 text-green-400 border-l-2 border-green-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'glass-chip text-emerald-300 border border-emerald-400/30'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Activity className="w-4 h-4" /> AI Picks
@@ -1677,8 +2055,8 @@ export default function SolScanner() {
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
                   activeTab === 'trending'
-                    ? 'bg-orange-900/20 text-orange-400 border-l-2 border-orange-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'glass-chip text-orange-300 border border-orange-400/30'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Flame className="w-4 h-4" /> Trending
@@ -1690,8 +2068,8 @@ export default function SolScanner() {
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
                   activeTab === 'bluechips'
-                    ? 'bg-purple-900/20 text-purple-400 border-l-2 border-purple-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'glass-chip text-violet-300 border border-violet-400/30'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" /> Bluechips
@@ -1703,163 +2081,147 @@ export default function SolScanner() {
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
                   activeTab === 'liked'
-                    ? 'bg-pink-900/20 text-pink-400 border-l-2 border-pink-500'
-                    : 'text-gray-500 hover:text-white'
+                    ? 'glass-chip text-rose-300 border border-rose-400/30'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Heart className="w-4 h-4" /> Watchlist
               </button>
 
-              {/* FOLDERS */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                  Folders
-                </div>
-                <div className="flex items-center gap-2 mb-3 px-3">
-                  <input
-                    type="text"
-                    placeholder="New Folder..."
-                    className="bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-white w-full focus:border-green-500 focus:outline-none placeholder-gray-700"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  />
-                  <button
-                    onClick={handleCreateFolder}
-                    className="p-1 bg-gray-900 border border-gray-800 rounded hover:border-green-500 text-green-500"
+              <div className="pt-4 border-t border-white/10 mt-4">
+                <button
+                  onClick={() => setCryptoOpen((prev) => !prev)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    cryptoOpen
+                      ? 'glass-chip text-emerald-300 border border-emerald-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  <span className="text-sm">Crypto</span>
+                  <span
+                    className={`ml-auto text-slate-400 text-[11px] transition-transform ${
+                      cryptoOpen ? 'rotate-90' : ''
+                    }`}
                   >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-                <nav className="space-y-0.5">
-                  {folders.map((folder) => (
-                    <div
-                      key={folder.id}
-                      onClick={() => {
-                        setActiveTab(`folder:${folder.id}`);
-                        setSidebarOpen(false);
-                      }}
-                      className={`group flex items-center justify-between px-3 py-2 rounded cursor-pointer text-sm transition-colors ${
-                        activeTab === `folder:${folder.id}`
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-500 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Folder className="w-4 h-4" />
-                        <span className="truncate max-w-[100px]">
-                          {folder.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteFolder(folder.id, e)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-500"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
+                </button>
+                {cryptoOpen && (
+                  <>
+                    <div className="px-1 space-y-2 mt-3">
+                      <MajorCryptoCard
+                        symbol="BTCUSDT"
+                        price={majorPrices?.bitcoin?.usd}
+                        name="Bitcoin"
+                        onClick={setExpandedChartSymbol}
+                      />
+                      <MajorCryptoCard
+                        symbol="ETHUSDT"
+                        price={majorPrices?.ethereum?.usd}
+                        name="Ethereum"
+                        onClick={setExpandedChartSymbol}
+                      />
+                      <MajorCryptoCard
+                        symbol="SOLUSDT"
+                        price={majorPrices?.solana?.usd}
+                        name="Solana"
+                        onClick={setExpandedChartSymbol}
+                      />
                     </div>
-                  ))}
-                </nav>
+                    <div className="px-3 pt-2 text-[10px] text-slate-500 font-mono text-center">
+                      Feed • {lastRefreshed.toLocaleTimeString()}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* FOLDERS */}
+              <div className="pt-4 border-t border-white/10 mt-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('folders');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    activeTab === 'folders'
+                      ? 'glass-chip text-emerald-300 border border-emerald-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Folder className="w-4 h-4" />
+                  <span className="text-sm">Folders</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                    {(user ? folders : localFolders).length}
+                  </span>
+                </button>
               </div>
 
               {/* TOP CALLS */}
-              <div className="pt-4 border-t border-gray-800 mt-2">
-                <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-bold text-yellow-500 uppercase tracking-widest">
-                  <Trophy className="w-3 h-3" /> Top Calls (24h)
-                </div>
-                <div className="space-y-1 px-1">
-                  {topCalls.day.map((t) => (
-                    <div
-                      key={t.pairAddress}
-                      onClick={() => setSelectedPair(t)}
-                      className="cursor-pointer px-3 py-2 rounded hover:bg-yellow-900/10 border border-transparent hover:border-yellow-900/30 transition-colors flex justify-between items-center"
-                    >
-                      <span className="text-xs font-bold text-gray-300">
-                        {t.baseToken?.symbol || 'UNKNOWN'}
-                      </span>
-                      <span className="text-[10px] font-mono text-green-400">
-                        +{(
-                          ((t.currentPrice - t.entryPrice) / t.entryPrice) *
-                          100
-                        ).toFixed(0)}%
-                      </span>
-                    </div>
-                  ))}
-                  {topCalls.day.length === 0 && (
-                    <div className="px-3 text-[10px] text-gray-600 italic">
-                      No data yet...
-                    </div>
-                  )}
-                </div>
+              <div className="pt-5 border-t border-white/10 mt-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('top_calls');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    activeTab === 'top_calls'
+                      ? 'glass-chip text-yellow-300 border border-yellow-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span className="text-sm">Top Calls (24h)</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                    {topCalls.day.length}
+                  </span>
+                </button>
+                {topCalls.day.length === 0 && (
+                  <div className="px-3 text-[10px] text-slate-500 italic mt-2">
+                    No data yet...
+                  </div>
+                )}
               </div>
 
               {/* VOLUME ALERTS */}
               {volumeSpikes.length > 0 && (
-                <div className="pt-4 border-t border-gray-800 mt-2">
-                  <div className="flex items-center gap-2 px-3 mb-2 text-[10px] font-bold text-red-400 uppercase tracking-widest animate-pulse">
-                    <Siren className="w-3 h-3" /> Volume Spikes
-                  </div>
-                  <div className="space-y-1 px-1">
-                    {volumeSpikes.map((t) => (
-                      <div
-                        key={t.pairAddress}
-                        onClick={() => setSelectedPair(t)}
-                        className="cursor-pointer px-3 py-2 rounded hover:bg-red-900/10 border border-transparent hover:border-red-900/30 transition-colors flex justify-between items-center"
-                      >
-                        <span className="text-xs font-bold text-gray-300">
-                          {t.baseToken.symbol}
-                        </span>
-                        <span className="text-[10px] font-mono text-red-400">
-                          +{((t.volume.m5 / t.volume.h1) * 100).toFixed(0)}% Vol
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="pt-4 border-t border-white/10 mt-4">
+                  <button
+                    onClick={() => {
+                      setActiveTab('volume_alerts');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                      activeTab === 'volume_alerts'
+                        ? 'glass-chip text-red-300 border border-red-400/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Siren className="w-4 h-4" />
+                    <span className="text-sm">Volume Alerts</span>
+                    <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                      {volumeSpikes.length}
+                    </span>
+                  </button>
                 </div>
               )}
             </nav>
-          </div>
 
-          {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
-          <div className="hidden md:block pt-4 border-t border-gray-900 space-y-2 bg-[#020202]">
-            <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-4 pt-2">
-              Market Pulse
-            </div>
-            <MajorCryptoCard
-              symbol="BTCUSDT"
-              price={majorPrices?.bitcoin?.usd}
-              name="Bitcoin"
-              onClick={setExpandedChartSymbol}
-            />
-            <MajorCryptoCard
-              symbol="ETHUSDT"
-              price={majorPrices?.ethereum?.usd}
-              name="Ethereum"
-              onClick={setExpandedChartSymbol}
-            />
-            <MajorCryptoCard
-              symbol="SOLUSDT"
-              price={majorPrices?.solana?.usd}
-              name="Solana"
-              onClick={setExpandedChartSymbol}
-            />
-            <div className="px-4 py-2 text-[10px] text-gray-700 font-mono text-center">
-              Feed • {lastRefreshed.toLocaleTimeString()}
-            </div>
+            {/* DESKTOP MARKET PULSE (Sidebar - Text Only) */}
+            <div className="hidden md:block space-y-4"></div>
           </div>
         </aside>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed bottom-36 right-6 z-40 p-3 bg-green-500 text-black rounded-full shadow-lg md:hidden"
+          className="fixed bottom-36 right-6 z-40 p-3 bg-gradient-to-br from-emerald-400 to-cyan-300 text-slate-900 rounded-full shadow-lg md:hidden"
         >
           <Menu className="w-6 h-6" />
         </button>
-        <main className="flex-1 relative flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none fixed"></div>
+        <main className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 overflow-y-auto pb-32 md:pb-0">{renderContent()}</div>
         </main>
         {/* MOBILE MARKET PULSE (Bottom Fixed - Text Only) */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-800 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 z-50 p-2 grid grid-cols-3 gap-2 pb-safe">
           <MajorCryptoCard
             symbol="BTCUSDT"
             price={majorPrices?.bitcoin?.usd}
@@ -1885,7 +2247,11 @@ export default function SolScanner() {
       {selectedPair && (
         <TokenDetailModal
           pair={selectedPair}
-          entryData={savedEntryStats[selectedPair.pairAddress]}
+          entryData={
+            user
+              ? savedEntryStats[selectedPair.pairAddress]
+              : localEntryStats[selectedPair.pairAddress]
+          }
           onClose={() => setSelectedPair(null)}
           onReportRug={handleReportRug}
         />
