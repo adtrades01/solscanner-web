@@ -576,16 +576,16 @@ const TokenCard = memo(
             {safeEntryPrice > 0 ? (
                 <div className="flex flex-col items-end gap-1">
                   <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
-                    Call MCap:{' '}
+                    AI Call MCap:{' '}
                     <span className="text-white">{formatCurrencyExact(callMcap)}</span>
-                    <span
-                      className={`ml-2 font-bold ${
-                        sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}
-                    >
-                      {sinceEntryPct > 0 ? '+' : ''}
-                      {sinceEntryPct.toFixed(2)}%
-                    </span>
+                  </div>
+                  <div
+                    className={`text-[10px] font-mono font-bold ${
+                      sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {sinceEntryPct > 0 ? '+' : ''}
+                    {sinceEntryPct.toFixed(2)}% since call
                   </div>
                   {callTime && (
                     <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
@@ -835,7 +835,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
               </div>
               {entryMcap && totalGain !== null && entryData?.timestamp && (
                 <div className="text-[11px] text-slate-400 font-mono mt-1">
-                  Call MCap:{' '}
+                  AI Call MCap:{' '}
                   <span className="text-white">{formatCurrencyExact(entryMcap)}</span>
                   <span
                     className={`ml-2 font-semibold ${
@@ -843,7 +843,7 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                     }`}
                   >
                     {totalGain > 0 ? '+' : ''}
-                    {totalGain.toFixed(2)}%
+                    {totalGain.toFixed(2)}% since call
                   </span>
                   <span className="ml-2 text-slate-500">
                     ({new Date(entryData.timestamp).toLocaleTimeString()})
@@ -1743,6 +1743,64 @@ export default function SolScanner() {
               ? 'Market is quiet. No high-conviction setups found.'
               : 'No signals detected.'}
           </div>
+        ) : activeTab === 'top_calls' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tokensToShow.map((call) => {
+              const entryPrice = parseFloat(call.entryPrice) || 0;
+              const currentPrice = parseFloat(call.currentPrice) || 0;
+              const gain =
+                entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+              return (
+                <div
+                  key={call.pairAddress}
+                  className="glass-card rounded-2xl p-5 border border-white/10 hover:-translate-y-1 transition-all cursor-pointer"
+                  onClick={() => call?.pairAddress && setSelectedPair(call)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-[0.3em]">
+                        Top Call
+                      </div>
+                      <div className="text-lg font-semibold text-white">
+                        {call.baseToken?.symbol || call.baseToken?.name || 'Token'}
+                      </div>
+                    </div>
+                    <div
+                      className={`text-sm font-mono font-bold ${
+                        gain >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}
+                    >
+                      {gain > 0 ? '+' : ''}
+                      {gain.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs text-slate-300">
+                    <div className="glass-chip rounded-xl p-3">
+                      <div className="text-[10px] text-slate-500 uppercase">
+                        Call Price
+                      </div>
+                      <div className="text-slate-100 font-mono">
+                        {formatCurrencyExact(entryPrice)}
+                      </div>
+                    </div>
+                    <div className="glass-chip rounded-xl p-3">
+                      <div className="text-[10px] text-slate-500 uppercase">
+                        Current Price
+                      </div>
+                      <div className="text-slate-100 font-mono">
+                        {formatCurrencyExact(currentPrice)}
+                      </div>
+                    </div>
+                  </div>
+                  {call.entryMcap && (
+                    <div className="mt-3 text-[10px] text-slate-500 font-mono">
+                      Call MCap: <span className="text-white">{formatCurrencyExact(call.entryMcap)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {tokensToShow.map((pair) => {
@@ -1778,6 +1836,13 @@ export default function SolScanner() {
   return (
     <div className="min-h-screen text-gray-200 font-sans selection:bg-indigo-500/30 flex flex-col overflow-hidden relative">
       <TopTicker items={scannerData} onItemClick={setSelectedPair} />
+      <button
+        onClick={() => window.location.reload()}
+        className="fixed top-12 right-6 z-50 glass-chip border border-white/10 px-4 py-2 rounded-xl text-sm text-white flex items-center gap-2 hover:bg-white/10 transition-colors"
+      >
+        <RefreshCw className="w-4 h-4" />
+        Refresh
+      </button>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_45%),radial-gradient(circle_at_20%_20%,_rgba(16,185,129,0.15),_transparent_40%),radial-gradient(circle_at_80%_0%,_rgba(236,72,153,0.2),_transparent_45%)]"></div>
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
@@ -2075,7 +2140,10 @@ export default function SolScanner() {
       {selectedPair && (
         <TokenDetailModal
           pair={selectedPair}
-          entryData={savedEntryStats[selectedPair.pairAddress]}
+          entryData={
+            savedEntryStats[selectedPair.pairAddress] ||
+            firstSeenRef.current[selectedPair.pairAddress]
+          }
           onClose={() => setSelectedPair(null)}
           onReportRug={handleReportRug}
         />
