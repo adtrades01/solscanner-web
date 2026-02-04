@@ -1774,7 +1774,12 @@ export default function SolScanner() {
       title = folderList.find((f) => f.id === folderId)?.name || 'Folder';
     }
 
-    if (loading && tokensToShow.length === 0)
+    const showLoadingState =
+      loading &&
+      tokensToShow.length === 0 &&
+      ['ai_picks', 'trending', 'bluechips', 'volume_alerts'].includes(activeTab);
+
+    if (showLoadingState)
       return (
         <div className="flex flex-col items-center justify-center h-full text-green-500 animate-pulse mt-20">
           <Activity className="w-12 h-12 mb-4" />
