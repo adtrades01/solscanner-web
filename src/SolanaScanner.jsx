@@ -272,6 +272,13 @@ const formatCurrency = (val) => {
   return `$${val.toFixed(2)}`;
 };
 
+const formatCurrencyExact = (val) => {
+  if (val === null || val === undefined || typeof val === 'object') return '$0.00';
+  const num = Number(val) || 0;
+  if (num < 1) return `$${num.toFixed(6)}`;
+  return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 const formatNumber = (num) => {
   if (!num || typeof num === 'object') return '0';
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -469,6 +476,7 @@ const TokenCard = memo(
     isCustom,
     onDelete,
     entryPrice,
+    entryTimestamp,
     ath
   }) => {
     const { score, reasons } = useMemo(() => calculateSafetyScore(pair), [pair]);
@@ -507,6 +515,12 @@ const TokenCard = memo(
     const downFromAth = safeAth > 0 ? ((currentPrice - safeAth) / safeAth) * 100 : 0;
 
     const athValue = safeAth > 0 ? safeAth * (parseFloat(pair.fdv) / currentPrice) : 0;
+    const callMcap =
+      safeEntryPrice > 0
+        ? (parseFloat(pair.fdv || pair.marketCap) || 0) *
+          (safeEntryPrice / (currentPrice || 1))
+        : 0;
+    const callTime = entryTimestamp ? new Date(entryTimestamp) : null;
 
     return (
       <div
@@ -560,15 +574,10 @@ const TokenCard = memo(
               </div>
 
             {safeEntryPrice > 0 ? (
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end gap-1">
                   <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
                     Call MCap:{' '}
-                    <span className="text-white">
-                      {formatCurrency(
-                        (parseFloat(pair.fdv || pair.marketCap) || 0) *
-                          (safeEntryPrice / (currentPrice || 1))
-                      )}
-                    </span>
+                    <span className="text-white">{formatCurrencyExact(callMcap)}</span>
                     <span
                       className={`ml-2 font-bold ${
                         sinceEntryPct >= 0 ? 'text-green-400' : 'text-red-400'
@@ -578,6 +587,11 @@ const TokenCard = memo(
                       {sinceEntryPct.toFixed(2)}%
                     </span>
                   </div>
+                  {callTime && (
+                    <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
+                      Called {callTime.toLocaleTimeString()}
+                    </div>
+                  )}
                   <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
                     ATH: {formatCurrency(athValue)}{' '}
                     <span
@@ -819,10 +833,10 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                 </span>
                 {formatCurrency(livePair.fdv)}
               </div>
-              {entryMcap && totalGain !== null && (
+              {entryMcap && totalGain !== null && entryData?.timestamp && (
                 <div className="text-[11px] text-slate-400 font-mono mt-1">
                   Call MCap:{' '}
-                  <span className="text-white">{formatCurrency(entryMcap)}</span>
+                  <span className="text-white">{formatCurrencyExact(entryMcap)}</span>
                   <span
                     className={`ml-2 font-semibold ${
                       totalGain >= 0 ? 'text-green-400' : 'text-red-400'
@@ -830,6 +844,9 @@ const TokenDetailModal = ({ pair, entryData, onClose, onReportRug }) => {
                   >
                     {totalGain > 0 ? '+' : ''}
                     {totalGain.toFixed(2)}%
+                  </span>
+                  <span className="ml-2 text-slate-500">
+                    ({new Date(entryData.timestamp).toLocaleTimeString()})
                   </span>
                 </div>
               )}
@@ -1736,6 +1753,7 @@ export default function SolScanner() {
                   isCustom={isCustom}
                   onDelete={handleDeleteCustomBluechip}
                   entryPrice={stats?.entryPrice}
+                  entryTimestamp={stats?.timestamp}
                   ath={stats?.ath}
                 />
               );
