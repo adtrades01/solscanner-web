@@ -1718,7 +1718,11 @@ export default function SolScanner() {
       await signInWithPopup(auth, provider);
       setAuthOpen(false);
     } catch (err) {
-      setAuthError(err?.message || 'Google sign-in failed.');
+      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
+      } else {
+        setAuthError(err?.message || 'Google sign-in failed.');
+      }
     }
   };
 
@@ -1731,7 +1735,11 @@ export default function SolScanner() {
       await signInWithPopup(auth, provider);
       setAuthOpen(false);
     } catch (err) {
-      setAuthError(err?.message || 'Apple sign-in failed.');
+      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
+      } else {
+        setAuthError(err?.message || 'Apple sign-in failed.');
+      }
     }
   };
 
@@ -1741,7 +1749,11 @@ export default function SolScanner() {
       await signInWithEmailAndPassword(auth, authEmail, authPassword);
       setAuthOpen(false);
     } catch (err) {
-      setAuthError(err?.message || 'Email sign-in failed.');
+      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
+      } else {
+        setAuthError(err?.message || 'Email sign-in failed.');
+      }
     }
   };
 
@@ -1751,7 +1763,11 @@ export default function SolScanner() {
       await createUserWithEmailAndPassword(auth, authEmail, authPassword);
       setAuthOpen(false);
     } catch (err) {
-      setAuthError(err?.message || 'Account creation failed.');
+      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
+      } else {
+        setAuthError(err?.message || 'Account creation failed.');
+      }
     }
   };
 
@@ -1785,6 +1801,9 @@ export default function SolScanner() {
     } else if (activeTab === 'volume_alerts') {
       tokensToShow = volumeSpikes;
       title = 'Volume Alerts';
+    } else if (activeTab === 'folders') {
+      tokensToShow = [];
+      title = 'Folders';
     } else if (activeTab.startsWith('folder:')) {
       const folderId = activeTab.split(':')[1];
       const folderList = user ? folders : localFolders;
@@ -1854,7 +1873,53 @@ export default function SolScanner() {
           )}
         </div>
 
-        {tokensToShow.length === 0 ? (
+        {activeTab === 'folders' ? (
+          <div className="glass-panel rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-[0.3em]">
+                Create Folder
+              </h3>
+            </div>
+            <div className="flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder="Create new folder..."
+                className="glass-chip rounded-lg px-3 py-2 text-sm text-white w-full focus:border-emerald-400 focus:outline-none placeholder-slate-600"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+              />
+              <button
+                onClick={handleCreateFolder}
+                className="glass-chip rounded-lg px-4 py-2 text-sm text-emerald-300 hover:border-emerald-400"
+              >
+                Create Folder
+              </button>
+            </div>
+            <div className="mt-6 space-y-2">
+              {(user ? folders : localFolders).map((folder) => (
+                <div
+                  key={folder.id}
+                  onClick={() => setActiveTab(`folder:${folder.id}`)}
+                  className="glass-card rounded-xl px-4 py-3 cursor-pointer flex items-center justify-between"
+                >
+                  <span className="text-sm text-white">{folder.name}</span>
+                  <button
+                    onClick={(e) => handleDeleteFolder(folder.id, e)}
+                    className="text-slate-400 hover:text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {(user ? folders : localFolders).length === 0 && (
+                <div className="text-xs text-slate-500 italic">
+                  No folders yet. Create one above to organize tokens.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : tokensToShow.length === 0 ? (
           <div className="text-center py-20 text-slate-500 border border-white/10 border-dashed rounded-2xl glass-panel">
             {activeTab === 'ai_picks'
               ? 'Market is quiet. No high-conviction setups found.'
@@ -2116,61 +2181,24 @@ export default function SolScanner() {
               </div>
 
               {/* FOLDERS */}
-              <div className="pt-4">
-                <div className="flex items-center justify-between px-3 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em]">
-                  Folders
-                </div>
-                <div className="px-3 mb-3 space-y-2">
-                  <input
-                    type="text"
-                    placeholder="Create new folder..."
-                    className="glass-chip rounded-lg px-3 py-2 text-xs text-white w-full focus:border-emerald-400 focus:outline-none placeholder-slate-600"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  />
-                  <button
-                    onClick={handleCreateFolder}
-                    className="w-full flex items-center justify-center gap-2 text-xs font-semibold glass-chip rounded-lg hover:border-emerald-400 text-emerald-300 py-2"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Create Folder
-                  </button>
-                </div>
-                <nav className="space-y-1 px-1">
-                  {(user ? folders : localFolders).map((folder) => (
-                    <div
-                      key={folder.id}
-                    onClick={() => {
-                      setActiveTab(`folder:${folder.id}`);
-                      setSidebarOpen(false);
-                    }}
-                      className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-sm transition-colors ${
-                        activeTab === `folder:${folder.id}`
-                          ? 'glass-chip text-white'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Folder className="w-4 h-4" />
-                        <span className="truncate max-w-[120px]">
-                          {folder.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteFolder(folder.id, e)}
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {(user ? folders : localFolders).length === 0 && (
-                    <div className="px-3 text-[10px] text-slate-500 italic">
-                      No folders yet. Create one above, then add tokens from cards.
-                    </div>
-                  )}
-                </nav>
+              <div className="pt-4 border-t border-white/10 mt-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('folders');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                    activeTab === 'folders'
+                      ? 'glass-chip text-emerald-300 border border-emerald-400/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Folder className="w-4 h-4" />
+                  <span className="text-sm">Folders</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-mono">
+                    {(user ? folders : localFolders).length}
+                  </span>
+                </button>
               </div>
 
               {/* TOP CALLS */}
