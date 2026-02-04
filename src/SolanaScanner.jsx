@@ -186,9 +186,6 @@ const analyzeNarrative = (name = '', description = '') => {
 };
 
 const generateAIThesis = (pair) => {
-  const liquidity = pair.liquidity?.usd || 0;
-  const volume24 = pair.volume?.h24 || 0;
-  const fdv = pair.fdv || 0;
   const socials = pair.info?.socials || [];
   const symbol = pair.baseToken.symbol;
   const description = pair.info?.header || pair.info?.description || 'No official description found.';
@@ -209,56 +206,29 @@ const generateAIThesis = (pair) => {
     narrativeContext = 'No official lore found.';
   }
 
-  const liquiditySignal =
-    liquidity > 200000
-      ? 'deep liquidity base'
-      : liquidity > 50000
-      ? 'healthy liquidity'
-      : liquidity > 10000
-      ? 'thin liquidity'
-      : 'fragile liquidity';
-  const turnoverRatio = liquidity > 0 ? volume24 / liquidity : 0;
-  const velocitySignal =
-    turnoverRatio > 2
-      ? 'high velocity turnover'
-      : turnoverRatio > 0.5
-      ? 'steady rotation'
-      : 'low rotation';
+  const cleanDesc = fullDesc
+    ? fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim()
+    : '';
+  const shortDesc =
+    cleanDesc.length > 0 ? cleanDesc.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ') : '';
+
   const socialSignal =
     socials.length > 3 ? 'visible social footprint' : 'limited social footprint';
 
-  if (liquidity > 100000 && volume24 < liquidity * 0.05) {
-    sentiment = 'POTENTIAL HONEYPOT';
-    color = 'text-red-500 animate-pulse';
-    thesis = `${symbol} shows a ${liquiditySignal} but almost no trade flow ($${formatNumber(
-      volume24
-    )} in 24h). That mismatch often signals exit risk or honeypot mechanics.`;
-  } else if (fdv > 10000000 && volume24 < 50000) {
-    sentiment = 'FAKE VALUATION';
-    color = 'text-red-500';
-    thesis = `${symbol} is priced at $${formatNumber(
-      fdv
-    )} FDV with minimal real demand. Without volume confirmation, the valuation looks synthetic.`;
-  } else if (socials.length > 2 && liquidity > 50000) {
-    if (volume24 > liquidity * 2) {
-      sentiment = `High Velocity ${sector}`;
-      color = 'text-purple-400';
-      thesis = `${symbol} is riding a ${sector} narrative with ${velocitySignal}. Liquidity is sturdy, and the social layer suggests momentum traders are active.`;
-    } else {
-      sentiment = `Established ${sector}`;
-      color = 'text-blue-400';
-      thesis = `${symbol} sits in the ${sector} theme with ${liquiditySignal} and ${velocitySignal}. This reads as a community-held asset rather than pure momentum.`;
-    }
-  } else {
-    sentiment = `Early ${sector}`;
-    color = 'text-yellow-400';
-    thesis = `${symbol} is an early ${sector} bet with ${liquiditySignal}, ${velocitySignal}, and a ${socialSignal}. Needs narrative traction or catalyst to unlock liquidity.`;
-  }
+  sentiment = `${sector} Narrative`;
+  color = socials.length > 2 ? 'text-blue-400' : 'text-yellow-400';
+
+  thesis = [
+    `${symbol} is positioned in the ${sector} theme.`,
+    shortDesc
+      ? `What it is: ${shortDesc}`
+      : 'What it is: The project has minimal public description, so the core idea is unclear.',
+    `Narrative angle: ${sector} framing with a ${socialSignal}.`,
+    `Why it exists: ${shortDesc ? 'It aims to rally around its stated idea or meme.' : 'It appears to be a speculative meme/idea waiting for clearer utility.'}`
+  ].join(' ');
 
   const narrativeSnapshot = [
     `Theme: ${sector}`,
-    `Liquidity: $${formatNumber(liquidity)} (${liquiditySignal})`,
-    `Volume: $${formatNumber(volume24)} (${velocitySignal})`,
     `Socials: ${socials.length} (${socialSignal})`
   ].join(' • ');
 
@@ -1144,10 +1114,15 @@ export default function SolScanner() {
         // Calculate Top Gainers
         const sorted = publicCoins
           .sort((a, b) => {
-            const gainA = (a.currentPrice - a.entryPrice) / a.entryPrice;
-            const gainB = (b.currentPrice - b.entryPrice) / b.entryPrice;
+            const entryA = parseFloat(a.entryPrice) || 0;
+            const entryB = parseFloat(b.entryPrice) || 0;
+            const currA = parseFloat(a.currentPrice) || 0;
+            const currB = parseFloat(b.currentPrice) || 0;
+            const gainA = entryA > 0 ? (currA - entryA) / entryA : 0;
+            const gainB = entryB > 0 ? (currB - entryB) / entryB : 0;
             return gainB - gainA;
           })
+          .filter((item) => item?.pairAddress)
           .slice(0, 5);
         setTopCalls((prev) => ({ ...prev, day: sorted }));
       }
