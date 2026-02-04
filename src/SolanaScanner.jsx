@@ -1093,6 +1093,9 @@ export default function SolScanner() {
   const [refreshing, setRefreshing] = useState(false);
   const [topCalls, setTopCalls] = useState({ day: [], week: [], month: [] });
   const [cryptoOpen, setCryptoOpen] = useState(false);
+  const [localFolders, setLocalFolders] = useState([]);
+  const [localFolderItems, setLocalFolderItems] = useState([]);
+  const [localLikedCoins, setLocalLikedCoins] = useState([]);
 
   const alertHistoryRef = useRef({});
   const previousVolumeCountRef = useRef(0);
@@ -1168,6 +1171,16 @@ export default function SolScanner() {
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedFolders = JSON.parse(localStorage.getItem('local_folders') || '[]');
+    const storedFolderItems = JSON.parse(localStorage.getItem('local_folder_items') || '[]');
+    const storedLiked = JSON.parse(localStorage.getItem('local_liked_coins') || '[]');
+    setLocalFolders(storedFolders);
+    setLocalFolderItems(storedFolderItems);
+    setLocalLikedCoins(storedLiked);
   }, []);
 
   useEffect(() => {
@@ -1573,7 +1586,17 @@ export default function SolScanner() {
   };
 
   const handleLike = async (pair) => {
-    if (!user) return;
+    if (!user) {
+      setLocalLikedCoins((prev) => {
+        const exists = prev.find((c) => c.pairAddress === pair.pairAddress);
+        const updated = exists
+          ? prev.filter((c) => c.pairAddress !== pair.pairAddress)
+          : [...prev, { ...pair, likedAt: Date.now(), pairAddress: pair.pairAddress }];
+        localStorage.setItem('local_liked_coins', JSON.stringify(updated));
+        return updated;
+      });
+      return;
+    }
     const isLiked = likedCoins.find((c) => c.pairAddress === pair.pairAddress);
     const docRef = doc(
       db,
@@ -1594,7 +1617,15 @@ export default function SolScanner() {
   };
 
   const handleCreateFolder = async () => {
-    if (!user || !newFolderName.trim()) return;
+    if (!newFolderName.trim()) return;
+    if (!user) {
+      const folderId = `local_${Date.now()}`;
+      const updated = [...localFolders, { id: folderId, name: newFolderName, createdAt: Date.now() }];
+      setLocalFolders(updated);
+      localStorage.setItem('local_folders', JSON.stringify(updated));
+      setNewFolderName('');
+      return;
+    }
     const folderId = `folder_${Date.now()}`;
     await setDoc(
       doc(
@@ -1613,7 +1644,16 @@ export default function SolScanner() {
 
   const handleDeleteFolder = async (folderId, e) => {
     e.stopPropagation();
-    if (!user) return;
+    if (!user) {
+      const updated = localFolders.filter((f) => f.id !== folderId);
+      setLocalFolders(updated);
+      localStorage.setItem('local_folders', JSON.stringify(updated));
+      const items = localFolderItems.filter((item) => item.folderId !== folderId);
+      setLocalFolderItems(items);
+      localStorage.setItem('local_folder_items', JSON.stringify(items));
+      if (activeTab === `folder:${folderId}`) setActiveTab('ai_picks');
+      return;
+    }
     await deleteDoc(
       doc(
         db,
@@ -1629,7 +1669,22 @@ export default function SolScanner() {
   };
 
   const handleAddToFolder = async (pair, folderId) => {
-    if (!user) return;
+    if (!user) {
+      const item = {
+        ...pair,
+        folderId,
+        addedAt: Date.now()
+      };
+      const updated = [
+        ...localFolderItems.filter(
+          (existing) => existing.pairAddress !== pair.pairAddress || existing.folderId !== folderId
+        ),
+        item
+      ];
+      setLocalFolderItems(updated);
+      localStorage.setItem('local_folder_items', JSON.stringify(updated));
+      return;
+    }
     const itemRef = doc(
       db,
       'artifacts',
@@ -1660,7 +1715,7 @@ export default function SolScanner() {
       tokensToShow = bluechipData;
       title = 'Bluechip Zone';
     } else if (activeTab === 'liked') {
-      tokensToShow = likedCoins;
+      tokensToShow = user ? likedCoins : localLikedCoins;
       title = 'Watchlist';
     } else if (activeTab === 'top_calls') {
       tokensToShow = topCalls.day;
@@ -1670,8 +1725,10 @@ export default function SolScanner() {
       title = 'Volume Alerts';
     } else if (activeTab.startsWith('folder:')) {
       const folderId = activeTab.split(':')[1];
-      tokensToShow = folderItems.filter((item) => item.folderId === folderId);
-      title = folders.find((f) => f.id === folderId)?.name || 'Folder';
+      const folderList = user ? folders : localFolders;
+      const items = user ? folderItems : localFolderItems;
+      tokensToShow = items.filter((item) => item.folderId === folderId);
+      title = folderList.find((f) => f.id === folderId)?.name || 'Folder';
     }
 
     if (loading && tokensToShow.length === 0)
@@ -1810,13 +1867,14 @@ export default function SolScanner() {
               const stats =
                 savedEntryStats[pair.pairAddress] ||
                 firstSeenRef.current[pair.pairAddress];
+              const likedList = user ? likedCoins : localLikedCoins;
               return (
                 <TokenCard
                   key={pair.pairAddress}
                   pair={pair}
                   onLike={handleLike}
-                  isLiked={likedCoins.some((c) => c.pairAddress === pair.pairAddress)}
-                  folders={folders}
+                  isLiked={likedList.some((c) => c.pairAddress === pair.pairAddress)}
+                  folders={user ? folders : localFolders}
                   onAddToFolder={handleAddToFolder}
                   onClick={setSelectedPair}
                   isCustom={isCustom}
@@ -1836,13 +1894,6 @@ export default function SolScanner() {
   return (
     <div className="min-h-screen text-gray-200 font-sans selection:bg-indigo-500/30 flex flex-col overflow-hidden relative">
       <TopTicker items={scannerData} onItemClick={setSelectedPair} />
-      <button
-        onClick={() => window.location.reload()}
-        className="fixed top-12 right-6 z-50 glass-chip border border-white/10 px-4 py-2 rounded-xl text-sm text-white flex items-center gap-2 hover:bg-white/10 transition-colors"
-      >
-        <RefreshCw className="w-4 h-4" />
-        Refresh
-      </button>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_45%),radial-gradient(circle_at_20%_20%,_rgba(16,185,129,0.15),_transparent_40%),radial-gradient(circle_at_80%_0%,_rgba(236,72,153,0.2),_transparent_45%)]"></div>
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
@@ -2015,13 +2066,13 @@ export default function SolScanner() {
                   </button>
                 </div>
                 <nav className="space-y-1 px-1">
-                  {folders.map((folder) => (
+                  {(user ? folders : localFolders).map((folder) => (
                     <div
                       key={folder.id}
-                      onClick={() => {
-                        setActiveTab(`folder:${folder.id}`);
-                        setSidebarOpen(false);
-                      }}
+                    onClick={() => {
+                      setActiveTab(`folder:${folder.id}`);
+                      setSidebarOpen(false);
+                    }}
                       className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-sm transition-colors ${
                         activeTab === `folder:${folder.id}`
                           ? 'glass-chip text-white'
@@ -2042,7 +2093,7 @@ export default function SolScanner() {
                       </button>
                     </div>
                   ))}
-                  {folders.length === 0 && (
+                  {(user ? folders : localFolders).length === 0 && (
                     <div className="px-3 text-[10px] text-slate-500 italic">
                       No folders yet. Create one above, then add tokens from cards.
                     </div>
