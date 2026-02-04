@@ -63,13 +63,7 @@ import {
   getAuth,
   signInAnonymously,
   onAuthStateChanged,
-  signInWithCustomToken,
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut
+  signInWithCustomToken
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -1108,10 +1102,6 @@ export default function SolScanner() {
   const [localLikedCoins, setLocalLikedCoins] = useState([]);
   const [localEntryStats, setLocalEntryStats] = useState({});
   const [entryStatsLoaded, setEntryStatsLoaded] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState('');
 
   const alertHistoryRef = useRef({});
   const previousVolumeCountRef = useRef(0);
@@ -1219,11 +1209,8 @@ export default function SolScanner() {
     if (!user) setEntryStatsLoaded(false);
   }, [user]);
 
-  // User Data
+  // Public Data (Universal Feed)
   useEffect(() => {
-    if (!user) return;
-
-    // PUBLIC DATA (Universal Feed)
     const unsubPublic = onSnapshot(
       collection(db, 'artifacts', appId, 'public', 'data', 'discovered_coins'),
       (snap) => {
@@ -1244,6 +1231,13 @@ export default function SolScanner() {
         setTopCalls((prev) => ({ ...prev, day: sorted }));
       }
     );
+
+    return () => unsubPublic();
+  }, []);
+
+  // User Data
+  useEffect(() => {
+    if (!user) return;
 
     const unsubFolders = onSnapshot(
       collection(db, 'artifacts', appId, 'users', user.uid, 'folders'),
@@ -1294,7 +1288,6 @@ export default function SolScanner() {
       unsubStats();
       unsubFolderItems();
       unsubBlacklist();
-      unsubPublic();
     };
   }, [user]);
 
@@ -1748,74 +1741,6 @@ export default function SolScanner() {
     });
   };
 
-  const handleGoogleLogin = async () => {
-    setAuthError('');
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      setAuthOpen(false);
-    } catch (err) {
-      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
-        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
-      } else {
-        setAuthError(err?.message || 'Google sign-in failed.');
-      }
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    setAuthError('');
-    const provider = new OAuthProvider('apple.com');
-    provider.addScope('email');
-    provider.addScope('name');
-    try {
-      await signInWithPopup(auth, provider);
-      setAuthOpen(false);
-    } catch (err) {
-      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
-        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
-      } else {
-        setAuthError(err?.message || 'Apple sign-in failed.');
-      }
-    }
-  };
-
-  const handleEmailLogin = async () => {
-    setAuthError('');
-    try {
-      await signInWithEmailAndPassword(auth, authEmail, authPassword);
-      setAuthOpen(false);
-    } catch (err) {
-      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
-        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
-      } else {
-        setAuthError(err?.message || 'Email sign-in failed.');
-      }
-    }
-  };
-
-  const handleEmailSignUp = async () => {
-    setAuthError('');
-    try {
-      await createUserWithEmailAndPassword(auth, authEmail, authPassword);
-      setAuthOpen(false);
-    } catch (err) {
-      if (err?.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
-        setAuthError('Firebase API key is invalid. Please set VITE_FIREBASE_API_KEY in env.');
-      } else {
-        setAuthError(err?.message || 'Account creation failed.');
-      }
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      setAuthError(err?.message || 'Sign out failed.');
-    }
-  };
-
   const renderContent = () => {
     let tokensToShow = [];
     let title = '';
@@ -2082,18 +2007,6 @@ export default function SolScanner() {
               </div>
             </div>
 
-            <div className="px-2">
-              <button
-                onClick={() => setAuthOpen(true)}
-                className="w-full glass-chip rounded-xl px-3 py-2 text-xs text-slate-200 flex items-center justify-between"
-              >
-                <span>{user ? `Signed in` : 'Sign in / Create account'}</span>
-                <span className="text-[10px] text-slate-500">
-                  {user ? 'Manage' : 'Secure login'}
-                </span>
-              </button>
-            </div>
-
             <div className="px-1">
               <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.3em] mb-2">
                 Contract Lookup
@@ -2343,79 +2256,6 @@ export default function SolScanner() {
           symbol={expandedChartSymbol}
           onClose={() => setExpandedChartSymbol(null)}
         />
-      )}
-      {authOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-panel border border-white/10 rounded-3xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Sign in</h3>
-              <button
-                onClick={() => setAuthOpen(false)}
-                className="p-2 glass-chip rounded-full text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-400">
-              Use a secure provider or email/password. Accounts are managed by Firebase Auth.
-            </p>
-            <div className="space-y-2">
-              <button
-                onClick={handleGoogleLogin}
-                className="w-full glass-chip rounded-xl px-4 py-2 text-sm text-white hover:bg-white/10"
-              >
-                Continue with Google
-              </button>
-              <button
-                onClick={handleAppleLogin}
-                className="w-full glass-chip rounded-xl px-4 py-2 text-sm text-white hover:bg-white/10"
-              >
-                Continue with Apple
-              </button>
-            </div>
-            <div className="border-t border-white/10 pt-4 space-y-2">
-              <input
-                type="email"
-                placeholder="Email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                className="w-full glass-chip rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full glass-chip rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
-              />
-              {authError && (
-                <div className="text-xs text-red-400">{authError}</div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleEmailLogin}
-                  className="glass-chip rounded-xl px-3 py-2 text-sm text-white hover:bg-white/10"
-                >
-                  Sign in
-                </button>
-                <button
-                  onClick={handleEmailSignUp}
-                  className="glass-chip rounded-xl px-3 py-2 text-sm text-white hover:bg-white/10"
-                >
-                  Create account
-                </button>
-              </div>
-            </div>
-            {user && (
-              <button
-                onClick={handleSignOut}
-                className="w-full glass-chip rounded-xl px-4 py-2 text-sm text-red-300 hover:text-red-200"
-              >
-                Sign out
-              </button>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
