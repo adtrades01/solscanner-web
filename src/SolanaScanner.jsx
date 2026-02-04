@@ -1094,6 +1094,23 @@ export default function SolScanner() {
     oscillator.onended = () => audioContext.close();
   };
 
+  const playClickSound = () => {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = 520;
+    gainNode.gain.value = 0.06;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.08);
+    oscillator.onended = () => audioContext.close();
+  };
+
   // Sync persistent stats to ref for logic check
   useEffect(() => {
     alertHistoryRef.current = { ...savedEntryStats };
@@ -2026,3 +2043,8 @@ export default function SolScanner() {
     </div>
   );
 }
+  useEffect(() => {
+    const handleClick = () => playClickSound();
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
