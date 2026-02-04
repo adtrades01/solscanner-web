@@ -1097,6 +1097,7 @@ export default function SolScanner() {
   const alertHistoryRef = useRef({});
   const previousVolumeCountRef = useRef(0);
   const audioContextRef = useRef(null);
+  const firstSeenRef = useRef({});
 
   const getAudioContext = () => {
     if (typeof window === 'undefined') return;
@@ -1373,6 +1374,14 @@ export default function SolScanner() {
       setTrendingData(trending);
       setAiPicks(ai);
       setScannerData(rawPairs);
+      rawPairs.forEach((pair) => {
+        if (!firstSeenRef.current[pair.pairAddress]) {
+          firstSeenRef.current[pair.pairAddress] = {
+            entryPrice: Number(pair.priceUsd) || 0,
+            timestamp: Date.now()
+          };
+        }
+      });
       setLastRefreshed(new Date());
 
       if (user && rawPairs.length > 0) {
@@ -1740,7 +1749,9 @@ export default function SolScanner() {
               const isCustom =
                 activeTab === 'bluechips' &&
                 customBluechips.some((c) => c.ca === pair.baseToken.address);
-              const stats = savedEntryStats[pair.pairAddress];
+              const stats =
+                savedEntryStats[pair.pairAddress] ||
+                firstSeenRef.current[pair.pairAddress];
               return (
                 <TokenCard
                   key={pair.pairAddress}
