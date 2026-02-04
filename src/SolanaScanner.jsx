@@ -185,9 +185,17 @@ const analyzeNarrative = (name = '', description = '') => {
   return 'Meme';
 };
 
+const NARRATIVE_HINTS = [
+  {
+    match: ['67'],
+    meaning: 'A popular “67” meme often associated with ironic viral humor and number-based meme culture.'
+  }
+];
+
 const generateAIThesis = (pair) => {
   const socials = pair.info?.socials || [];
   const symbol = pair.baseToken.symbol;
+  const name = pair.baseToken.name || symbol;
   const description = pair.info?.header || pair.info?.description || 'No official description found.';
   const sector = analyzeNarrative(pair.baseToken.name, description);
 
@@ -199,9 +207,9 @@ const generateAIThesis = (pair) => {
   const fullDesc = description || '';
   if (fullDesc) {
     // Regex to remove URLs for cleaner text
-    const cleanDesc = fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '');
-    if (cleanDesc.length > 150) narrativeContext = `"${cleanDesc.substring(0, 140)}..."`;
-    else narrativeContext = `"${cleanDesc}"`;
+    const cleaned = fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim();
+    if (cleaned.length > 150) narrativeContext = `"${cleaned.substring(0, 140)}..."`;
+    else narrativeContext = `"${cleaned}"`;
   } else {
     narrativeContext = 'No official lore found.';
   }
@@ -214,18 +222,32 @@ const generateAIThesis = (pair) => {
 
   const socialSignal =
     socials.length > 3 ? 'visible social footprint' : 'limited social footprint';
+  const hasDescription = shortDesc.length > 0;
+
+  const hint = NARRATIVE_HINTS.find(({ match }) =>
+    match.some((token) => name.toLowerCase().includes(token.toLowerCase()) || symbol.toLowerCase() === token.toLowerCase())
+  );
 
   sentiment = `${sector} Narrative`;
   color = socials.length > 2 ? 'text-blue-400' : 'text-yellow-400';
 
+  const whatItIs = hasDescription
+    ? shortDesc
+    : hint?.meaning || 'The project has minimal public description, so the core idea is unclear.';
+  const originLine = hint ? `Origin & meme context: ${hint.meaning}` : null;
+  const utilityLine = hasDescription
+    ? 'Utility/story: The description frames the core idea and intended vibe.'
+    : 'Utility/story: Primarily a narrative or meme-driven asset without clear product detail.';
+
   thesis = [
-    `${symbol} is positioned in the ${sector} theme.`,
-    shortDesc
-      ? `What it is: ${shortDesc}`
-      : 'What it is: The project has minimal public description, so the core idea is unclear.',
-    `Narrative angle: ${sector} framing with a ${socialSignal}.`,
-    `Why it exists: ${shortDesc ? 'It aims to rally around its stated idea or meme.' : 'It appears to be a speculative meme/idea waiting for clearer utility.'}`
-  ].join(' ');
+    `${symbol} is a ${sector}-themed token.`,
+    `What it is: ${whatItIs}`,
+    originLine,
+    `Community layer: ${socials.length} socials with a ${socialSignal}.`,
+    utilityLine
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const narrativeSnapshot = [
     `Theme: ${sector}`,
