@@ -555,7 +555,7 @@ const TokenCard = memo(
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-white leading-none truncate">
+                  <h3 className="font-semibold text-white leading-snug break-words whitespace-normal">
                     {pair.baseToken.name}
                   </h3>
                   <button
