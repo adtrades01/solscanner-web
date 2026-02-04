@@ -217,8 +217,11 @@ const generateAIThesis = (pair) => {
   const cleanDesc = fullDesc
     ? fullDesc.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim()
     : '';
+  const sentenceMatches = cleanDesc.match(/[^.!?]+[.!?]+/g) || [];
   const shortDesc =
-    cleanDesc.length > 0 ? cleanDesc.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ') : '';
+    cleanDesc.length > 0
+      ? (sentenceMatches.length > 0 ? sentenceMatches : [cleanDesc]).slice(0, 2).join(' ').trim()
+      : '';
 
   const socialSignal =
     socials.length > 3 ? 'visible social footprint' : 'limited social footprint';
@@ -1076,12 +1079,24 @@ export default function SolScanner() {
 
   const alertHistoryRef = useRef({});
   const previousVolumeCountRef = useRef(0);
+  const audioContextRef = useRef(null);
 
-  const playAlertSound = () => {
+  const getAudioContext = () => {
     if (typeof window === 'undefined') return;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
-    const audioContext = new AudioContextClass();
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  };
+
+  const playAlertSound = () => {
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     oscillator.type = 'sine';
@@ -1091,24 +1106,20 @@ export default function SolScanner() {
     gainNode.connect(audioContext.destination);
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.15);
-    oscillator.onended = () => audioContext.close();
   };
 
   const playClickSound = () => {
-    if (typeof window === 'undefined') return;
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audioContext = new AudioContextClass();
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     oscillator.type = 'triangle';
     oscillator.frequency.value = 520;
-    gainNode.gain.value = 0.06;
+    gainNode.gain.value = 0.12;
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.08);
-    oscillator.onended = () => audioContext.close();
   };
 
   // Sync persistent stats to ref for logic check
@@ -1139,6 +1150,12 @@ export default function SolScanner() {
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleClick = () => playClickSound();
+    document.addEventListener('pointerdown', handleClick);
+    return () => document.removeEventListener('pointerdown', handleClick);
   }, []);
 
   // User Data
@@ -2043,8 +2060,3 @@ export default function SolScanner() {
     </div>
   );
 }
-  useEffect(() => {
-    const handleClick = () => playClickSound();
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
