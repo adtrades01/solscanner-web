@@ -1479,7 +1479,7 @@ export default function SolScanner() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => fetchData(false), 1000); // 1s Auto Refresh
+    const interval = setInterval(() => fetchData(false), 500); // 0.5s Auto Refresh
     return () => clearInterval(interval);
   }, [customBluechips, savedEntryStats, blacklist]);
 
