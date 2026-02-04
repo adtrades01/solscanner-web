@@ -1758,12 +1758,10 @@ export default function SolScanner() {
               </span>
             </div>
             <button
-              onClick={() => fetchData(true)}
+              onClick={() => window.location.reload()}
               className="glass-chip hover:bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all pointer-events-auto"
             >
-              <RefreshCw
-                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-              />
+              <RefreshCw className="w-4 h-4" />
               Refresh
             </button>
           </div>
